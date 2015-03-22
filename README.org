@@ -1,5 +1,5 @@
 #+OPTIONS: toc:nil num:nil
-#+TITLE: Bug Hunter [[file:hunter.png]] [[https://travis-ci.org/Bruce-Connor/names?branch=master][https://secure.travis-ci.org/Bruce-Connor/elisp-bug-hunter.png?branch=master]]
+#+TITLE: Bug Hunter [[file:hunter.png]] [[https://travis-ci.org/Bruce-Connor/elisp-bug-hunter?branch%3Dmaster][https://secure.travis-ci.org/Bruce-Connor/elisp-bug-hunter.png?branch=master]]
 
 ~bug-hunter~ is an Emacs library that finds the source of a bug inside any given ~.el~ file. 
 
