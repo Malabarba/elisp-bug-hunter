@@ -57,6 +57,7 @@
 ;;   `----
 
 ;;; Code:
+(require 'seq)
 
 (defun bug-hunter--read-buffer ()
   "Return all sexps after point as a list."
