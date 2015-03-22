@@ -1,12 +1,12 @@
 ;;; bug-hunter.el --- Hunt down errors in elisp files  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2015  Artur Malabarba
+;; Copyright (C) 2015 Free Software Foundation, Inc.
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
 ;; URL: http://github.com/Bruce-Connor/elisp-bug-hunter
 ;; Version: 0.1
 ;; Keywords: lisp
-;; Package-Requires: ((cl-lib "0.5") (let-alist "1.0.3") (spinner "1.0") (seq "1.3"))
+;; Package-Requires: ((cl-lib "0.5") (spinner "1.0") (seq "1.3"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
