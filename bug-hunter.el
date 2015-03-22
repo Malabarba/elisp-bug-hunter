@@ -56,6 +56,7 @@
 ;;   | M-x package-install RET bug-hunter
 ;;   `----
 
+
 ;;; Code:
 (require 'seq)
 
@@ -126,6 +127,8 @@ See `bug-hunter' for a description on the ASSERTION."
         (special-mode)
         (current-buffer))))
 
+
+;;; Main functions
 (defun bug-hunter-hunt (forms assertion)
   "Bisect FORMS using ASSERTION.
 FORMS is a list of elisp expressions which are either throwing an
@@ -175,6 +178,7 @@ One common source of that is to rely on a feature being loaded."
           (bug-hunter--report "The return value was: %s" ret))
         result))))
 
+;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
   "Test ASSERTION while bisecting FILE.
 All sexps in FILE are read and passed to `bug-hunter-hunt' as a
@@ -194,6 +198,7 @@ list.  See `bug-hunter-hunt' for how to use assertion."
             (bug-hunter--read-buffer)))))
   (bug-hunter-hunt (bug-hunter--read-contents file) assertion))
 
+;;;###autoload
 (defun bug-hunter-init-file (&optional assertion)
   "Test ASSERTION throughout `user-init-file'.
 All sexps inside `user-init-file' are read and passed to
