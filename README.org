@@ -22,7 +22,7 @@
    ~bug-hunter-hunt~ to search in a list of expressions.
 
 * Installation
-It is part of Emacs and is available trough [[https://elpa.gnu.org/packages/names.html][GNU Elpa]]. To install, issue 
+It is part of Emacs and is available trough [[https://elpa.gnu.org/packages/bug-hunter.html][GNU Elpa]]. To install, issue 
 
 #+BEGIN_SRC text
 M-x package-install RET bug-hunter
