@@ -6,7 +6,7 @@
 ;; URL: http://github.com/Bruce-Connor/elisp-bug-hunter
 ;; Version: 0.1
 ;; Keywords: lisp
-;; Package-Requires: ((cl-lib "0.5") (spinner "1.0") (seq "1.3"))
+;; Package-Requires: ((seq "1.3"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -154,11 +154,13 @@ One common source of that is to rely on a feature being loaded."
         "Signaled an error even on emacs -Q")
       (or assertion "")))
   (bug-hunter--report "Initial tests done. Hunting for the cause...")
-  (let ((result
-         (catch 'done
-           (dotimes (i (length forms))
-             (let ((test (bug-hunter--run-and-test (seq-take forms (1+ i)) assertion)))
-               (when test (throw 'done (list i test))))))))
+  (let* ((size (length forms))
+         (result
+          (catch 'done
+            (dotimes (i size)
+              (message "Testing: %4s/%s" i size)
+              (let ((test (bug-hunter--run-and-test (seq-take forms (1+ i)) assertion)))
+                (when test (throw 'done (list i test))))))))
     (if (not result)
         (bug-hunter--report-end "No problem was found, despite our initial tests.\n%s"
           "I have no idea what's going on.")
