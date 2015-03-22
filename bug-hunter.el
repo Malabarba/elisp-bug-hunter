@@ -39,7 +39,7 @@
 ;;   2. If Emacs starts up without errors but something is not working as
 ;;      it should, invoke the same command, but give it in an assertion:
 ;;      ,----
-;;      | M-x bug-hunter-init-file RET (test-the-misbehaving-feature) RET
+;;      | M-x bug-hunter-init-file RET (when issue-detected t) RET
 ;;      `----
 ;; 
 ;;   3. You can also use `bug-hunter-file' to hunt in other files, or even
