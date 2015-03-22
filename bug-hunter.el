@@ -57,14 +57,34 @@
   (bug-hunter--report-print "")
   (apply #'user-error r))
 
+(defun bug-hunter--run-form (form)
+  "Run FUNCTION with \"emacs -Q\" and return the result."
+  (let ((out-buf (generate-new-buffer "*Bug-Hunter Command*"))
+        (exec (file-truename (expand-file-name invocation-name
+                                               invocation-directory))))
+    (shell-command
+     (concat (shell-quote-argument exec)
+             " -Q -batch --eval "
+             (shell-quote-argument
+              (with-temp-buffer
+                (print (list 'prin1 form) (current-buffer))
+                (buffer-string))))
+     out-buf)
+    (with-current-buffer out-buf
+      (goto-char (point-max))
+      (forward-sexp -1)
+      (prog1 (read (current-buffer))
+        ;; (kill-buffer (current-buffer))
+        ))))
+
 (defun bug-hunter--run-and-test (forms assertion)
   "Execute FORMS in the background and test ASSERTION.
 See `bug-hunter' for a description on the ASSERTION."
-  (async-sandbox
-   `(lambda () (condition-case er
-              (progn ,@forms
-                     ,assertion)
-            (error (cons 'error er))))))
+  (bug-hunter--run-form
+   `(condition-case er
+        (progn ,@forms
+               ,assertion)
+      (error (cons 'error er)))))
 
 (defun bug-hunter--init-report-buffer ()
   (or (get-buffer "*Bug-Hunter Report*")
