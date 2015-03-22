@@ -3,6 +3,8 @@
 ;; Copyright (C) 2015  Artur Malabarba
 
 ;; Author: Artur Malabarba <bruce.connor.am@gmail.com>
+;; URL: http://github.com/Bruce-Connor/elisp-bug-hunter
+;; Version: 0.1
 ;; Keywords: lisp
 ;; Package-Requires: ((cl-lib "0.5") (let-alist "1.0.3") (spinner "1.0") (seq "1.3"))
 
