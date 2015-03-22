@@ -91,14 +91,14 @@ One common source of that is to rely on a feature being loaded."
   (bug-hunter--report "Testing assertion...")
   (unless (bug-hunter--run-and-test forms assertion)
     (bug-hunter--report-end "Test failed.\n%s\n%s"
-                                  (if assertion "Assertion returned nil even with all forms evaluated:"
-                                    "No errors signaled even with all forms evaluated")
-                                  (or assertion "")))
+      (if assertion "Assertion returned nil even with all forms evaluated:"
+        "No errors signaled even with all forms evaluated")
+      (or assertion "")))
   (when (bug-hunter--run-and-test nil assertion)
     (bug-hunter--report-end "Test failed.\n%s\n%s"
-                                  (if assertion "Assertion returned non-nil even on emacs -Q:"
-                                    "Signaled an error even on emacs -Q")
-                                  (or assertion "")))
+      (if assertion "Assertion returned non-nil even on emacs -Q:"
+        "Signaled an error even on emacs -Q")
+      (or assertion "")))
   (bug-hunter--report "Initial tests done. Hunting for the cause...")
   (let ((result
          (catch 'done
@@ -107,17 +107,17 @@ One common source of that is to rely on a feature being loaded."
                (when test (throw 'done (list i test))))))))
     (if (not result)
         (bug-hunter--report-end "No problem was found, despite our initial tests.\n%s"
-                                      "I have no idea what's going on.")
+          "I have no idea what's going on.")
       (let ((pos (car result))
             (ret (cadr result)))
         (bug-hunter--report
-         "Bug encountered on the following sexp at position %s:\n%s"
-         pos
-         (elt forms pos))
+            "Bug encountered on the following sexp at position %s:\n%s"
+          pos
+          (elt forms pos))
         (if (eq (car-safe ret) 'error)
-            (bug-hunter--report "The following error was signaled: %s" (cdr ret))
-          (bug-hunter--report "The return value was: %s" ret)))))
-  (bug-hunter--report ""))
+            (bug-hunter--report "The following error was signaled: %s" (cdr ret))
+          (bug-hunter--report "The return value was: %s" ret))
+        result))))
 
 (defun bug-hunter-file (file &optional assertion)
   "Test ASSERTION while bisecting FILE.
