@@ -1,5 +1,4 @@
 (source gnu)
-(source melpa-stable)
 
 (package-file "bug-hunter.el")
 

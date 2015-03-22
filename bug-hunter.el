@@ -1,4 +1,4 @@
-;;; bug-hunter.el --- Bisect your init file to track down errors  -*- lexical-binding: t; -*-
+;;; bug-hunter.el --- Hunt down errors in elisp files  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015  Artur Malabarba
 

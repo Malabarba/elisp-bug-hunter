@@ -1,7 +1,7 @@
 (unless (bound-and-true-p package--initialized)
   (setq
    package-user-dir (expand-file-name
-                     (format "../.cask/%s/elpa" emacs-version)
+                     (format ".cask/%s/elpa" emacs-version)
                      (file-name-directory load-file-name)))
 
   (package-initialize))
