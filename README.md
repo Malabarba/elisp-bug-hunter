@@ -21,7 +21,6 @@
    `bug-hunter-hunt` to search in a list of expressions.
 
 ## Installation
-It is part of Emacs and is available trough [GNU Elpa](https://elpa.gnu.org/packages/bug-hunter.html). To install, issue 
 
-    M-x package-install RET bug-hunter
-
+1. Open the `bug-hunter.el` file.
+2. Issue  `M-x package-install-from-buffer`.
