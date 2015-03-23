@@ -6,7 +6,7 @@
 ;; URL: http://github.com/Bruce-Connor/elisp-bug-hunter
 ;; Version: 0.1
 ;; Keywords: lisp
-;; Package-Requires: ((seq "1.3"))
+;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -59,14 +59,25 @@
 
 ;;; Code:
 (require 'seq)
+(require 'cl-lib)
 
 (defun bug-hunter--read-buffer ()
   "Return all sexps after point as a list."
-  (let ((out))
-    (ignore-errors
-      (while t
-        (push (read (current-buffer)) out)))
-    (nreverse out)))
+  (let ((out)
+        (line))
+    (or (condition-case er
+            ;; Looks hacky, but comes from `byte-compile-from-buffer'.
+            (while (progn (while (progn (skip-chars-forward " \t\n\^l")
+                                        (looking-at ";"))
+                            (forward-line 1))
+                          (not (eobp)))
+              (setq line (line-number-at-pos (point)))
+              (push (read (current-buffer)) out)
+              nil)
+          (end-of-file `(bug-caught ,line end-of-file))
+          (invalid-read-syntax `(bug-caught ,line ,@er))
+          (error (error "Ran into an error we don't understand, please file a bug report: %S" er)))
+        (nreverse out))))
 
 (defun bug-hunter--read-contents (file)
   "Return all sexps in FILE as a list."
@@ -125,7 +136,7 @@ See `bug-hunter' for a description on the ASSERTION."
         (progn ,@forms
                (run-hooks 'after-init-hook)
                ,assertion)
-      (error (cons 'error er)))))
+      (error (cons 'bug-caught er)))))
 
 (defun bug-hunter--init-report-buffer ()
   (or (get-buffer "*Bug-Hunter Report*")
@@ -150,7 +161,7 @@ See `bug-hunter' for a description on the ASSERTION."
             ;; easier to just run it anyway to get the return value.
             (bug-hunter--run-and-test (append safe head) assertion)))
    ((and (message "Testing: %s/%s"
-           (setq bug-hunter--i (1+ bug-hunter--i))
+           (cl-incf bug-hunter--i)
            bug-hunter--estimate)
          (bug-hunter--run-and-test (append safe head) assertion))
     (apply #'bug-hunter--bisect
@@ -169,10 +180,28 @@ element in FORMS which trigger ASSERTION, and value is the
 ASSERTION's return value.
 
 If ASSERTION is nil, n is the position of the first form to
-signal an error and value is (error . ERROR-SIGNALED)."
+signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
         (bug-hunter--estimate (ceiling (log (length forms) 2))))
     (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
+
+(defun bug-hunter--report-error (line error-description &optional info)
+  (apply #'bug-hunter--report-end
+    (cl-case error-description
+      (end-of-file
+       (list "There's a missing closing parenthesis, %s%s%s"
+             "the expression on line " line " never ends"))
+      (invalid-read-syntax
+       (if (member info '("]" ")"))
+           (list "There's an extra %s on line %s%s%s%s" info
+                 line ". There's probably a missing "
+                 (if (string= info ")") "(" "[")
+                 " before that.")
+         (list "There's a %s on line %s, and that is not valid elisp syntax."
+               info line
+               ", maybe there is a missing opening parenthesis before that.")))
+      (t (list "Found the following error on line %s: %S"
+               line (cons error-description info))))))
 
 
 ;;; Main functions
@@ -192,7 +221,9 @@ Make sure that ASSERTION does not throw errors when all is
 well (check against emacs -Q).
 One common source of that is to rely on a feature being loaded."
   (pop-to-buffer (bug-hunter--init-report-buffer))
-  (bug-hunter--report "Testing assertion...")
+  (when (eq (car-safe forms) 'bug-caught)
+    (apply #'bug-hunter--report-error (cdr forms)))
+  (bug-hunter--report "Doing some initial tests...")
   (unless (bug-hunter--run-and-test forms assertion)
     (bug-hunter--report-end "Test failed.\n%s\n%s"
       (if assertion "Assertion returned nil even with all forms evaluated:"
@@ -213,7 +244,7 @@ One common source of that is to rely on a feature being loaded."
         (bug-hunter--report "Bug encountered on the following sexp at position %s:\n    %S"
           pos
           (elt forms pos))
-        (if (eq (car-safe ret) 'error)
+        (if (eq (car-safe ret) 'bug-caught)
             (bug-hunter--report "The following error was signaled: %s\n" (cdr ret))
           (bug-hunter--report "The return value was: %s\n" ret))
         result))))
