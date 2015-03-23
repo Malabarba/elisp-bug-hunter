@@ -123,6 +123,7 @@ See `bug-hunter' for a description on the ASSERTION."
   (bug-hunter--run-form
    `(condition-case er
         (progn ,@forms
+               (run-hooks 'after-init-hook)
                ,assertion)
       (error (cons 'error er)))))
 
