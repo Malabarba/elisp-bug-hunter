@@ -10,7 +10,7 @@
 (require 'cl)
 (require 'bug-hunter)
 (fset 'bug-hunter--report #'ignore)
-(fset 'bug-hunter--report-end #'ignore)
+;; (fset 'bug-hunter--report-end #'ignore)
 
 (ert-deftest bug-hunter-test ()
   (should
