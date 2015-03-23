@@ -96,21 +96,26 @@
   "Run FUNCTION with \"emacs -Q\" and return the result."
   (let ((out-buf (generate-new-buffer "*Bug-Hunter Command*"))
         (exec (file-truename (expand-file-name invocation-name
-                                               invocation-directory))))
-    (shell-command
-     (concat (shell-quote-argument exec)
-             " -Q -batch --eval "
-             (shell-quote-argument
-              (with-temp-buffer
-                (print (list 'prin1 form) (current-buffer))
-                (buffer-string))))
-     out-buf)
+                                               invocation-directory)))
+        (file-name (make-temp-file "bug-hunter")))
+    (unwind-protect
+        (progn
+          (with-temp-file file-name
+            (let ((print-length nil)
+                  (print-level nil))
+              (print (list 'prin1 form) (current-buffer)))
+            (buffer-string))
+          (shell-command
+           (concat (shell-quote-argument exec)
+                   " -Q --batch -l "
+                   (shell-quote-argument file-name))
+           out-buf))
+      (delete-file file-name))
     (with-current-buffer out-buf
       (goto-char (point-max))
       (forward-sexp -1)
       (prog1 (read (current-buffer))
-        ;; (kill-buffer (current-buffer))
-        ))))
+        (kill-buffer (current-buffer))))))
 
 (defun bug-hunter--run-and-test (forms assertion)
   "Execute FORMS in the background and test ASSERTION.
