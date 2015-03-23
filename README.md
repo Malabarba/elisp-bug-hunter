@@ -1,4 +1,4 @@
-## (Not done yet...) Bug Hunter ![hunter](hunter.png) [![travis](https://secure.travis-ci.org/Bruce-Connor/elisp-bug-hunter.png?branch=master)](https://travis-ci.org/Bruce-Connor/elisp-bug-hunter?branch%3Dmaster)
+##  ![hunter](hunter.png) (Not done yet...) Bug Hunter [![travis](https://secure.travis-ci.org/Bruce-Connor/elisp-bug-hunter.png?branch=master)](https://travis-ci.org/Bruce-Connor/elisp-bug-hunter?branch%3Dmaster)
 
 `bug-hunter` is an Emacs library that finds the source of a bug inside any given `.el` file. 
 
