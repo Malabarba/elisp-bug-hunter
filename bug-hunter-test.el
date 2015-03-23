@@ -11,14 +11,14 @@
 
 (ert-deftest bug-hunter-test ()
   (should
-   (equal '(2 (error void-variable not-defined))
+   (equal [2 (error void-variable not-defined)]
           (bug-hunter-hunt
            '((setq test 1)
              (setq test 2)
              not-defined)
            nil)))
   (should
-   (equal '(2 t)
+   (equal [2 t]
           (bug-hunter-hunt
            '((setq test0 0)
              (setq test1 1)
