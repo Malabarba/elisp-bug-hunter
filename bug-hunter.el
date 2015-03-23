@@ -134,6 +134,47 @@ See `bug-hunter' for a description on the ASSERTION."
         (current-buffer))))
 
 
+;;; The actual bisection
+(defun bug-hunter--split (l)
+  (seq-partition l (ceiling (/ (length l) 2.0))))
+
+(defvar bug-hunter--i 0)
+(defvar bug-hunter--estimate 0)
+
+(defun bug-hunter--bisect (assertion safe head &optional tail)
+  "Implementation used by `bug-hunter--bisect-start'."
+  (cond
+   ((not tail)
+    (vector (length safe)
+            ;; Sometimes we already ran this, sometimes not. So it's
+            ;; easier to just run it anyway to get the return value.
+            (bug-hunter--run-and-test (append safe head) assertion)))
+   ((and (message "Testing: %s/%s"
+           (setq bug-hunter--i (1+ bug-hunter--i))
+           bug-hunter--estimate)
+         (bug-hunter--run-and-test (append safe head) assertion))
+    (apply #'bug-hunter--bisect
+      assertion
+      safe
+      (bug-hunter--split head)))
+   (t (apply #'bug-hunter--bisect
+        assertion
+        (append safe head)
+        (bug-hunter--split tail)))))
+
+(defun bug-hunter--bisect-start (forms assertion)
+  "Run a bisection search on list of FORMS using ASSERTION.
+Returns a vector [n value], where n is the position of the first
+element in FORMS which trigger ASSERTION, and value is the
+ASSERTION's return value.
+
+If ASSERTION is nil, n is the position of the first form to
+signal an error and value is (error . ERROR-SIGNALED)."
+  (let ((bug-hunter--i 0)
+        (bug-hunter--estimate (ceiling (log (length forms) 2))))
+    (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
+
+
 ;;; Main functions
 (defun bug-hunter-hunt (forms assertion)
   "Bisect FORMS using ASSERTION.
@@ -163,25 +204,18 @@ One common source of that is to rely on a feature being loaded."
         "Signaled an error even on emacs -Q")
       (or assertion "")))
   (bug-hunter--report "Initial tests done. Hunting for the cause...")
-  (let* ((size (length forms))
-         (result
-          (catch 'done
-            (dotimes (i size)
-              (message "Testing: %4s/%s" i size)
-              (let ((test (bug-hunter--run-and-test (seq-take forms (1+ i)) assertion)))
-                (when test (throw 'done (list i test))))))))
+  (let* ((result (bug-hunter--bisect-start forms assertion)))
     (if (not result)
         (bug-hunter--report-end "No problem was found, despite our initial tests.\n%s"
           "I have no idea what's going on.")
-      (let ((pos (car result))
-            (ret (cadr result)))
-        (bug-hunter--report
-            "Bug encountered on the following sexp at position %s:\n%s"
+      (let ((pos (elt result 0))
+            (ret (elt result 1)))
+        (bug-hunter--report "Bug encountered on the following sexp at position %s:\n    %S"
           pos
           (elt forms pos))
         (if (eq (car-safe ret) 'error)
-            (bug-hunter--report "The following error was signaled: %s" (cdr ret))
-          (bug-hunter--report "The return value was: %s" ret))
+            (bug-hunter--report "The following error was signaled: %s\n" (cdr ret))
+          (bug-hunter--report "The return value was: %s\n" ret))
         result))))
 
 ;;;###autoload
