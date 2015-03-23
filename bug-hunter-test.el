@@ -9,10 +9,12 @@
 (require 'ert)
 (require 'cl)
 (require 'bug-hunter)
+(fset 'bug-hunter--report #'ignore)
+(fset 'bug-hunter--report-end #'ignore)
 
 (ert-deftest bug-hunter-test ()
   (should
-   (equal [2 (error void-variable not-defined)]
+   (equal [2 (bug-caught void-variable not-defined)]
           (bug-hunter-hunt
            '((setq test 1)
              (setq test 2)
@@ -40,5 +42,25 @@
       (let ((pos (- size (* 3 n) 1)))
         (setf (elt forms pos) 'not-defined)
         (should
-         (equal (vector pos '(error void-variable not-defined))
+         (equal (vector pos '(bug-caught void-variable not-defined))
                 (bug-hunter-hunt forms nil)))))))
+
+(ert-deftest bug-hunter-reader-error-test ()
+  (let ((file (expand-file-name "bug-hunter-test-dummy-file"
+                                default-directory)))
+    (with-temp-file file
+      (insert "(setq useless 1)\n#\n(setq useless 1)\n"))
+    (should-error (bug-hunter-file file nil))
+    (should
+     (equal '(bug-caught 2 invalid-read-syntax "#")
+            (bug-hunter--read-contents file)))
+    (with-temp-file file
+      (insert "(setq useless 1)\n)\n(setq useless 1)\n"))
+    (should
+     (equal '(bug-caught 2 invalid-read-syntax ")")
+            (bug-hunter--read-contents file)))
+    (with-temp-file file
+      (insert "(setq useless 1)\n(\n(setq useless 1)\n"))
+    (should
+     (equal '(bug-caught 2 end-of-file)
+            (bug-hunter--read-contents file)))))
