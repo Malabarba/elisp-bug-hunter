@@ -7,6 +7,7 @@
   (package-initialize))
 
 (require 'ert)
+(require 'cl)
 (require 'bug-hunter)
 
 (ert-deftest bug-hunter-test ()
