@@ -30,3 +30,14 @@
                  nil))
   (should-error
    (bug-hunter-hunt nil 'not-defined)))
+
+(ert-deftest bug-hunter-looong-hunt ()
+  (let* ((submax 30)
+         (size (* 3 submax))
+         (forms (make-list size '(setq dummy 1))))
+    (dotimes (n submax)
+      (let ((pos (- size (* 3 n) 1)))
+        (setf (elt forms pos) 'not-defined)
+        (should
+         (equal (vector pos '(error void-variable not-defined))
+                (bug-hunter-hunt forms nil)))))))
