@@ -135,9 +135,11 @@
 See `bug-hunter' for a description on the ASSERTION."
   (bug-hunter--run-form
    `(condition-case er
-        (progn ,@forms
-               (run-hooks 'after-init-hook)
-               ,assertion)
+        (let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
+          (delete-file server-name)
+          ,@forms
+          (run-hooks 'after-init-hook)
+          ,assertion)
       (error (cons 'bug-caught er)))))
 
 (defun bug-hunter--init-report-buffer ()
