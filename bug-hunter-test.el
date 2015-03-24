@@ -35,11 +35,18 @@
    (bug-hunter-hunt nil 'not-defined)))
 
 (ert-deftest bug-hunter-looong-hunt ()
-  (let* ((submax 30)
-         (size (* 3 submax))
+  (let* ((size 30)
          (forms (make-list size '(setq dummy 1))))
-    (dotimes (n submax)
-      (let ((pos (- size (* 3 n) 1)))
+    (dotimes (n size)
+      (let ((pos (- size n 1)))
+        (setf (elt forms pos) 'not-defined)
+        (should
+         (equal (vector pos '(bug-caught void-variable not-defined))
+                (bug-hunter-hunt forms nil))))))
+  (let* ((size 8)
+         (forms (make-list size '(setq dummy 1))))
+    (dotimes (n size)
+      (let ((pos (- size n 1)))
         (setf (elt forms pos) 'not-defined)
         (should
          (equal (vector pos '(bug-caught void-variable not-defined))
