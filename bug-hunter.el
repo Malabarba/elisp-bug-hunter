@@ -72,10 +72,12 @@
                             (forward-line 1))
                           (not (eobp)))
               (setq line (line-number-at-pos (point)))
-              (push (read (current-buffer)) out)
+              (setq col (current-column))
+              (push (list (read (current-buffer)) line col)
+                    out)
               nil)
-          (end-of-file `(bug-caught ,line end-of-file))
-          (invalid-read-syntax `(bug-caught ,line ,@er))
+          (end-of-file `(bug-caught ,line ,col end-of-file))
+          (invalid-read-syntax `(bug-caught ,line ,col ,@er))
           (error (error "Ran into an error we don't understand, please file a bug report: %S" er)))
         (nreverse out))))
 
@@ -97,7 +99,7 @@
   (apply #'bug-hunter--report-print r)
   (apply #'message r))
 
-(defun bug-hunter--report-end (&rest r)
+(defun bug-hunter--report-user-error (&rest r)
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
   (bug-hunter--report-print "")
@@ -141,7 +143,9 @@ See `bug-hunter' for a description on the ASSERTION."
 (defun bug-hunter--init-report-buffer ()
   (or (get-buffer "*Bug-Hunter Report*")
       (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
-        (special-mode)
+        (compilation-mode)
+        (set (make-local-variable 'compilation-error-regexp-alist)
+             '(comma))
         (current-buffer))))
 
 
@@ -185,69 +189,89 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
         (bug-hunter--estimate (ceiling (log (length forms) 2))))
     (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
 
-(defun bug-hunter--report-error (line error-description &optional info)
-  (apply #'bug-hunter--report-end
+(defvar bug-hunter--current-file nil)
+
+(defun bug-hunter--report-error (line column error-description &rest info)
+  (bug-hunter--report "%S, line %s pos %s:"
+    bug-hunter--current-file line column)
+  (bug-hunter--report "    %s\n"
     (cl-case error-description
       (end-of-file
-       (list "There's a missing closing parenthesis, %s%s%s"
-             "the expression on line " line " never ends"))
+       "There's a missing closing parenthesis, the expression on this line never ends.")
       (invalid-read-syntax
-       (if (member info '("]" ")"))
-           (list "There's an extra %s on line %s%s%s%s" info
-                 line ". There's probably a missing "
-                 (if (string= info ")") "(" "[")
-                 " before that.")
-         (list "There's a %s on line %s, and that is not valid elisp syntax."
-               info line
-               ", maybe there is a missing opening parenthesis before that.")))
-      (t (list "Found the following error on line %s: %S"
-               line (cons error-description info))))))
+       (let ((char (car info)))
+         (if (member char '("]" ")"))
+             (concat "There's an extra " char
+                     " on this position. There's probably a missing "
+                     (if (string= char ")") "(" "[")
+                     " before that.")
+           (concat "There's a " char
+                   " on this position, and that is not valid elisp syntax."))))
+      (assertion-triggered
+       (format "The assertion returned the following value here:\n    %S"
+         (car info)))
+      (t (format "The following error was signaled here:\n    %S"
+           (cons error-description info)))))
+  `[,line ,column ,error-description ,@info])
 
 
 ;;; Main functions
-(defun bug-hunter-hunt (forms assertion)
-  "Bisect FORMS using ASSERTION.
-FORMS is a list of elisp expressions which are either throwing an
-error or causing some undesirable effect.
+(defun bug-hunter-hunt (rich-forms assertion)
+  "Bisect RICH-FORMS using ASSERTION.
+RICH-FORMS is a list with elements of the form: (EXPR LINE COL)
+    EXPR is an elisp expression. LINE and COL are the coordinates
+    where that expression starts in `bug-hunter--current-file'.
+It is expected that one of EXPR is either throwing an error or
+causing some undesirable effect (which triggers ASSERTION).
 
 ASSERTION is either nil or an expression.
+    If nil, FORMS are bisected until they stop throwing errors.
+    If it is an expression, FORMS are bisected by testing
+    ASSERTION. It should return nil if all is fine (e.g. if used
+    with \"emacs -Q\"), and should return non-nil when a problem
+    is detected.
 
-If it is nil, FORMS are bisected until they stop throwing errors.
-If it is an expression, FORMS are bisected by testing ASSERTION.
-It should return nil if all is fine (e.g. if used with \"emacs -Q\"),
-and should return non-nil when a problem is detected.
-
-Make sure that ASSERTION does not throw errors when all is
-well (check against emacs -Q).
-One common source of that is to rely on a feature being loaded."
+Bug hunter will refuse to hunt if (i) an error is signaled or the
+assertion is triggered while running emacs -Q, or (ii) no errors
+are signaled and the assertion is not triggered after all EXPRs
+are evaluated."
   (pop-to-buffer (bug-hunter--init-report-buffer))
-  (when (eq (car-safe forms) 'bug-caught)
-    (apply #'bug-hunter--report-error (cdr forms)))
-  (bug-hunter--report "Doing some initial tests...")
-  (unless (bug-hunter--run-and-test forms assertion)
-    (bug-hunter--report-end "Test failed.\n%s\n%s"
-      (if assertion "Assertion returned nil even with all forms evaluated:"
-        "No errors signaled even with all forms evaluated")
-      (or assertion "")))
-  (when (bug-hunter--run-and-test nil assertion)
-    (bug-hunter--report-end "Test failed.\n%s\n%s"
-      (if assertion "Assertion returned non-nil even on emacs -Q:"
-        "Signaled an error even on emacs -Q")
-      (or assertion "")))
-  (bug-hunter--report "Initial tests done. Hunting for the cause...")
-  (let* ((result (bug-hunter--bisect-start forms assertion)))
-    (if (not result)
-        (bug-hunter--report-end "No problem was found, despite our initial tests.\n%s"
-          "I have no idea what's going on.")
-      (let ((pos (elt result 0))
-            (ret (elt result 1)))
-        (bug-hunter--report "Bug encountered on the following sexp at position %s:\n    %S"
-          pos
-          (elt forms pos))
-        (if (eq (car-safe ret) 'bug-caught)
-            (bug-hunter--report "The following error was signaled: %s\n" (cdr ret))
-          (bug-hunter--report "The return value was: %s\n" ret))
-        result))))
+  (let ((expressions (unless (eq (car-safe rich-forms) 'bug-caught)
+                       (mapcar #'car rich-forms))))
+    (cond
+     ((not expressions)
+      (apply #'bug-hunter--report-error (cdr rich-forms))
+      (apply #'vector (cdr rich-forms)))
+     
+     ;; Make sure there's a bug to hunt.
+     ((progn (bug-hunter--report "Doing some initial tests...")
+             (not (bug-hunter--run-and-test expressions assertion)))
+      (bug-hunter--report-user-error "Test failed.\n%s\n%s"
+        (if assertion "Assertion returned nil even with all expressions evaluated:"
+          "No errors signaled even with all expressions evaluated.")
+        (or assertion "")))
+     
+     ;; Make sure we're in a forest, not a volcano.
+     ((bug-hunter--run-and-test nil assertion)
+      (bug-hunter--report-user-error "Test failed.\n%s\n%s"
+        (if assertion "Assertion returned non-nil even on emacs -Q:"
+          "Detected a signaled error even on emacs -Q")
+        (or assertion "")))
+
+     (t
+      ;; Perform the actual hunt.
+      (bug-hunter--report "Initial tests done. Hunting for the cause...")
+      (let* ((result (bug-hunter--bisect-start expressions assertion)))
+        (if (not result)
+            (bug-hunter--report-user-error "No problem was found, despite our initial tests.\n%s"
+              "I have no idea what's going on.")
+          (let* ((pos (elt result 0))
+                 (ret (elt result 1))
+                 (linecol (cdr (elt rich-forms pos))))
+            (if (eq (car-safe ret) 'bug-caught)
+                (apply #'bug-hunter--report-error (first linecol) (second linecol) (cdr ret))
+              (bug-hunter--report-error
+               (first linecol) (second linecol) 'assertion-triggered ret)))))))))
 
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
@@ -267,7 +291,8 @@ list.  See `bug-hunter-hunt' for how to use assertion."
                           nil 'read-expression-history))
             (goto-char (point-min))
             (bug-hunter--read-buffer)))))
-  (bug-hunter-hunt (bug-hunter--read-contents file) assertion))
+  (let ((bug-hunter--current-file file))
+    (bug-hunter-hunt (bug-hunter--read-contents file) assertion)))
 
 ;;;###autoload
 (defun bug-hunter-init-file (&optional assertion)
