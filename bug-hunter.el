@@ -61,6 +61,16 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defvar bug-hunter--i 0
+  "Current step of the bisection. Used for user feedback.")
+(defvar bug-hunter--estimate 0
+  "Estimate on how many steps the bisection can take. Used for user feedback.
+This is the base 2 log of the number of expressions in the
+file.")
+
+(defvar bug-hunter--current-file nil
+  "File currently being debugged.")
+
 (defun bug-hunter--read-buffer ()
   "Return all sexps after point as a list."
   (let ((out)
@@ -155,9 +165,6 @@ See `bug-hunter' for a description on the ASSERTION."
 (defun bug-hunter--split (l)
   (seq-partition l (ceiling (/ (length l) 2.0))))
 
-(defvar bug-hunter--i 0)
-(defvar bug-hunter--estimate 0)
-
 (defun bug-hunter--bisect (assertion safe head &optional tail)
   "Implementation used by `bug-hunter--bisect-start'."
   (cond
@@ -190,8 +197,6 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
         (bug-hunter--estimate (ceiling (log (length forms) 2))))
     (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
-
-(defvar bug-hunter--current-file nil)
 
 (defun bug-hunter--report-error (line column error-description &rest info)
   (bug-hunter--report "%S, line %s pos %s:"
