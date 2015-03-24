@@ -98,6 +98,8 @@ file.")
     (goto-char (point-min))
     (bug-hunter--read-buffer)))
 
+
+;;; Reporting functions
 (defun bug-hunter--report-print (&rest r)
   (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
     (goto-char (point-max))
@@ -109,12 +111,72 @@ file.")
   (apply #'bug-hunter--report-print r)
   (apply #'message r))
 
+(defun bug-hunter--report-value (value padding)
+  (declare (indent 1))
+  (bug-hunter--report
+      (with-temp-buffer
+        (pp value (current-buffer))
+        (goto-char (point-min))
+        (let ((pad (make-string padding ?\s)))
+          (while (not (eobp))
+            (insert pad)
+            (forward-line 1)))
+        (buffer-string))))
+
 (defun bug-hunter--report-user-error (&rest r)
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
   (bug-hunter--report-print "")
   (apply #'user-error r))
 
+(defun bug-hunter--init-report-buffer ()
+  (or (get-buffer "*Bug-Hunter Report*")
+      (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
+        (compilation-mode)
+        (set (make-local-variable 'compilation-error-regexp-alist)
+             '(comma))
+        (current-buffer))))
+
+(defun bug-hunter--pretty-format (value padding)
+  "Return a VALUE as a string with PADDING spaces on the left."
+  (with-temp-buffer
+    (pp value (current-buffer))
+    (goto-char (point-min))
+    (let ((pad (make-string padding ?\s)))
+      (while (not (eobp))
+        (insert pad)
+        (forward-line 1)))
+    (buffer-string)))
+
+(defun bug-hunter--report-error (line column error &optional expression)
+  (bug-hunter--report "%S, line %s pos %s:"
+    bug-hunter--current-file line column)
+  (bug-hunter--report "  %s"
+    (cl-case (car error)
+      (end-of-file
+       "There's a missing closing parenthesis, the expression on this line never ends.")
+      (invalid-read-syntax
+       (let ((char (second error)))
+         (if (member char '("]" ")"))
+             (concat "There's an extra " char
+                     " on this position. There's probably a missing "
+                     (if (string= char ")") "(" "[")
+                     " before that.")
+           (concat "There's a " char
+                   " on this position, and that is not valid elisp syntax."))))
+      (assertion-triggered
+       (concat "The assertion returned the following value here:\n"
+               (bug-hunter--pretty-format (second error) 4)))
+      (t (format "The following error was signaled here:\n    %S"
+           error))))
+  (when expression
+    (bug-hunter--report "  Caused by the following expression:\n%s"
+      (bug-hunter--pretty-format expression 4)))
+  (bug-hunter--report "")
+  `[,line ,column ,error ,expression])
+
+
+;;; Execution functions
 (defun bug-hunter--run-form (form)
   "Run FUNCTION with \"emacs -Q\" and return the result."
   (let ((out-buf (generate-new-buffer "*Bug-Hunter Command*"))
@@ -149,13 +211,6 @@ See `bug-hunter' for a description on the ASSERTION."
           ,assertion)
       (error (cons 'bug-caught er)))))
 
-(defun bug-hunter--init-report-buffer ()
-  (or (get-buffer "*Bug-Hunter Report*")
-      (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
-        (compilation-mode)
-        (set (make-local-variable 'compilation-error-regexp-alist)
-             '(comma))
-        (current-buffer))))
 
 
 ;;; The actual bisection
@@ -194,33 +249,6 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
         (bug-hunter--estimate (ceiling (log (length forms) 2))))
     (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
-
-(defun bug-hunter--report-error (line column error &optional expression)
-  (bug-hunter--report "%S, line %s pos %s:"
-    bug-hunter--current-file line column)
-  (bug-hunter--report "    %s\n"
-    (cl-case (car error)
-      (end-of-file
-       "There's a missing closing parenthesis, the expression on this line never ends.")
-      (invalid-read-syntax
-       (let ((char (second error)))
-         (if (member char '("]" ")"))
-             (concat "There's an extra " char
-                     " on this position. There's probably a missing "
-                     (if (string= char ")") "(" "[")
-                     " before that.")
-           (concat "There's a " char
-                   " on this position, and that is not valid elisp syntax."))))
-      (assertion-triggered
-       (format "The assertion returned the following value here:\n    %S"
-         (cdr error)))
-      (t (format "The following error was signaled here:\n    %S"
-           error))))
-  (when expression
-    (bug-hunter--report "    Caused by the following expression:\n    %s"
-      expression))
-  (bug-hunter--report "")
-  `[,line ,column ,error ,expression])
 
 
 ;;; Main functions
