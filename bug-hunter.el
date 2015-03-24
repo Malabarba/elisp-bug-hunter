@@ -312,6 +312,32 @@ are evaluated."
                (first linecol) (second linecol)
                (list 'assertion-triggered ret) expression)))))))))
 
+(defun bug-hunter--read-from-minibuffer ()
+  "Read a list of expressions from the minibuffer.
+Wraps them in a progn if necessary."
+  (require 'simple)
+  (let ((exprs
+         (with-temp-buffer
+           ;; Copied from `read--expression'.
+           (let ((minibuffer-completing-symbol t))
+             (minibuffer-with-setup-hook
+                 (lambda ()
+                   ;; FIXME: call emacs-lisp-mode?
+                   (add-function :before-until (local 'eldoc-documentation-function)
+                                 #'elisp-eldoc-documentation-function)
+                   (add-hook 'completion-at-point-functions
+                             #'elisp-completion-at-point nil t)
+                   (run-hooks 'eval-expression-minibuffer-setup-hook))
+               (insert
+                (read-from-minibuffer
+                 "Expression that returns nil if all is well (optional): "
+                 nil read-expression-map nil 'read-expression-history))))
+           (goto-char (point-min))
+           (mapcar #'car (bug-hunter--read-buffer)))))
+    (if (cdr exprs)
+        (cons #'progn exprs)
+      (car exprs))))
+
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
   "Test ASSERTION while bisecting FILE.
@@ -323,13 +349,7 @@ list.  See `bug-hunter-hunt' for how to use assertion."
                     (file-name-directory (or (buffer-file-name) "./"))
                     nil t
                     (file-name-nondirectory (or (buffer-file-name) "./")))
-    (cons #'progn
-          (with-temp-buffer
-            (insert
-             (read-string "Expression that returns non-nil if there's a problem: "
-                          nil 'read-expression-history))
-            (goto-char (point-min))
-            (bug-hunter--read-buffer)))))
+    (bug-hunter--read-from-minibuffer)))
   (let ((bug-hunter--current-file file))
     (bug-hunter-hunt (bug-hunter--read-contents file) assertion)))
 
@@ -339,15 +359,7 @@ list.  See `bug-hunter-hunt' for how to use assertion."
 All sexps inside `user-init-file' are read and passed to
 `bug-hunter-hunt' as a list.  See `bug-hunter-hunt' for how to use
 assertion."
-  (interactive
-   (list
-    (cons #'progn
-          (with-temp-buffer
-            (insert
-             (read-string "Expression that returns non-nil if there's a problem: "
-                          nil 'read-expression-history))
-            (goto-char (point-min))
-            (bug-hunter--read-buffer)))))
+  (interactive (list (bug-hunter--read-from-minibuffer)))
   (bug-hunter-file user-init-file assertion))
 
 (provide 'bug-hunter)
