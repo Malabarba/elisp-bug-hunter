@@ -86,8 +86,8 @@ file.")
               (push (list (read (current-buffer)) line col)
                     out)
               nil)
-          (end-of-file `(bug-caught ,line ,col end-of-file))
-          (invalid-read-syntax `(bug-caught ,line ,col ,@er))
+          (end-of-file `(bug-caught ,line ,col (end-of-file)))
+          (invalid-read-syntax `(bug-caught ,line ,col ,er))
           (error (error "Ran into an error we don't understand, please file a bug report: %S" er)))
         (nreverse out))))
 
@@ -122,23 +122,20 @@ file.")
                                                invocation-directory)))
         (file-name (make-temp-file "bug-hunter")))
     (unwind-protect
-        (progn
+        (let ((print-length nil)
+              (print-level nil))
           (with-temp-file file-name
-            (let ((print-length nil)
-                  (print-level nil))
-              (print (list 'prin1 form) (current-buffer)))
-            (buffer-string))
-          (shell-command
-           (concat (shell-quote-argument exec)
-                   " -Q --batch -l "
-                   (shell-quote-argument file-name))
-           out-buf))
-      (delete-file file-name))
-    (with-current-buffer out-buf
-      (goto-char (point-max))
-      (forward-sexp -1)
-      (prog1 (read (current-buffer))
-        (kill-buffer (current-buffer))))))
+            (print (list 'prin1 form) (current-buffer)))
+          (shell-command (concat (shell-quote-argument exec)
+                                 " -Q --batch -l "
+                                 (shell-quote-argument file-name))
+                         out-buf)
+          (with-current-buffer out-buf
+            (goto-char (point-max))
+            (forward-sexp -1)
+            (prog1 (read (current-buffer))
+              (kill-buffer (current-buffer)))))
+      (delete-file file-name))))
 
 (defun bug-hunter--run-and-test (forms assertion)
   "Execute FORMS in the background and test ASSERTION.
@@ -198,15 +195,15 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
         (bug-hunter--estimate (ceiling (log (length forms) 2))))
     (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
 
-(defun bug-hunter--report-error (line column error-description &rest info)
+(defun bug-hunter--report-error (line column error &optional expression)
   (bug-hunter--report "%S, line %s pos %s:"
     bug-hunter--current-file line column)
-  (bug-hunter--report "    %s\n"
-    (cl-case error-description
+  (bug-hunter--report "    %s\n"
+    (cl-case (car error)
       (end-of-file
        "There's a missing closing parenthesis, the expression on this line never ends.")
       (invalid-read-syntax
-       (let ((char (car info)))
+       (let ((char (second error)))
          (if (member char '("]" ")"))
              (concat "There's an extra " char
                      " on this position. There's probably a missing "
@@ -216,10 +213,14 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
                    " on this position, and that is not valid elisp syntax."))))
       (assertion-triggered
        (format "The assertion returned the following value here:\n    %S"
-         (car info)))
+         (cdr error)))
       (t (format "The following error was signaled here:\n    %S"
-           (cons error-description info)))))
-  `[,line ,column ,error-description ,@info])
+           error))))
+  (when expression
+    (bug-hunter--report "    Caused by the following expression:\n    %s"
+      expression))
+  (bug-hunter--report "")
+  `[,line ,column ,error ,expression])
 
 
 ;;; Main functions
@@ -274,11 +275,14 @@ are evaluated."
               "I have no idea what's going on.")
           (let* ((pos (elt result 0))
                  (ret (elt result 1))
-                 (linecol (cdr (elt rich-forms pos))))
+                 (linecol (cdr (elt rich-forms pos)))
+                 (expression (elt expressions pos)))
             (if (eq (car-safe ret) 'bug-caught)
-                (apply #'bug-hunter--report-error (first linecol) (second linecol) (cdr ret))
+                (bug-hunter--report-error
+                 (first linecol) (second linecol) (cdr ret) expression)
               (bug-hunter--report-error
-               (first linecol) (second linecol) 'assertion-triggered ret)))))))))
+               (first linecol) (second linecol)
+               (list 'assertion-triggered ret) expression)))))))))
 
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
