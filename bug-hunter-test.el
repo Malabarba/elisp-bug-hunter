@@ -9,7 +9,7 @@
 (require 'ert)
 (require 'cl)
 (require 'bug-hunter)
-(fset 'bug-hunter--report #'ignore)
+;; (fset 'bug-hunter--report #'ignore)
 ;; (fset 'bug-hunter--report-end #'ignore)
 
 (ert-deftest bug-hunter-test ()
@@ -42,14 +42,16 @@
   (let* ((size 30)
          (forms (make-list size '((setq dummy 1) 12 90))))
     (dotimes (n size)
-      (setcar (elt forms (- size n 1)) 'not-defined)
-      (should
-       (equal [(void-variable not-defined) 12 90 not-defined]
-              (bug-hunter-hunt forms nil)))))
+      (let ((forms (copy-list forms)))
+        (setcar (elt forms (- size n 1)) 'not-defined)
+        (should
+         (equal [(void-variable not-defined) 12 90 not-defined]
+                (bug-hunter-hunt forms nil))))))
   (let* ((size 8)
          (forms (make-list size '(setq dummy 1))))
     (dotimes (n size)
-      (let ((pos (- size n 1)))
+      (let ((pos (- size n 1))
+            (forms (copy-list forms)))
         (setf (elt forms pos) 'not-defined)
         (should
          (equal (vector pos '(bug-caught void-variable not-defined))
