@@ -228,18 +228,29 @@ the file."
               (print-level nil))
           (with-temp-file file-name
             (print (list 'prin1 form) (current-buffer)))
-          (call-process exec nil out-buf nil
-                        "-Q" "--batch" "-l" file-name)
+          ;; Use async process so we can use a timeout, but wait
+          ;; synchronously for it.
+          (let ((proc (start-process "Bug-Hunter-Emacs" out-buf
+                                     exec "-Q" "--batch" "-l" file-name)))
+            (while (process-live-p proc)
+              (sit-for 0)))
+          ;; Wait for the finished process to print.  Is there a better
+          ;; way to do this?
+          (sit-for 0.2)
           (with-current-buffer out-buf
             (goto-char (point-max))
+            (forward-line -1)
             (forward-sexp -1)
-            (prog1 (read (current-buffer))
-              (kill-buffer (current-buffer)))))
-      (delete-file file-name))))
+            (read (current-buffer))))
+      ;; Unwind forms
+      (delete-file file-name)
+      (ignore-errors
+        (kill-process (get-buffer-process out-buf)))
+      (kill-buffer out-buf))))
 
-(defun bug-hunter--run-and-test (forms assertion)
-  "Execute FORMS in the background and test ASSERTION.
-See `bug-hunter' for a description on the ASSERTION."
+(defun bug-hunter--run-and-test-1 (forms assertion)
+  "Implementation of `bug-hunter--run-and-test'.
+FORMS and ASSERTION are passed to `bug-hunter--run-and-test'."
   (bug-hunter--run-form
    `(condition-case er
         (let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
@@ -249,6 +260,17 @@ See `bug-hunter' for a description on the ASSERTION."
           ,assertion)
       (error (cons 'bug-caught er)))))
 
+(defun bug-hunter--run-and-test (forms assertion &optional timeout)
+  "Execute FORMS in the background and test ASSERTION.
+See `bug-hunter' for a description on the ASSERTION.
+
+TIMEOUT, if non-nil, specifies how long the process is allowed to
+run in seconds.  If it goes longer than that, the process is
+killed, and the return value is (bug-caught timeout)."
+  (if timeout
+      (with-timeout (timeout '(bug-caught timeout))
+        (bug-hunter--run-and-test-1 forms assertion))
+    (bug-hunter--run-and-test-1 forms assertion)))
 
 
 ;;; The actual bisection
