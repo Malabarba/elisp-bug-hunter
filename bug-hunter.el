@@ -12,49 +12,65 @@
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
-
+;;
 ;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
-
+;;
 ;; You should have received a copy of the GNU General Public License
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;; `bug-hunter' is an Emacs library that finds the source of a bug inside
-;; any given `.el' file.
-;;
-;;
+;; `bug-hunter' is an Emacs library that finds the source of an error or
+;; unexpected behavior inside an elisp configuration file (tipically
+;; `init.el' or `.emacs').
+;; 
+;; 
 ;; Usage Examples
 ;; ==============
-;;
-;;   1. If your Emacs init file signals an error during startup, but you
-;;      don’t know why, simply issue
-;;      ,----
-;;      | M-x bug-hunter-init-file RET RET
-;;      `----
-;;      and `bug-hunter' will find it for you.
-;;
-;;   2. If Emacs starts up without errors but something is not working as
-;;      it should, invoke the same command, but give it in an assertion:
-;;      ,----
-;;      | M-x bug-hunter-init-file RET (when issue-detected t) RET
-;;      `----
-;;
-;;   3. You can also use `bug-hunter-file' to hunt in other files, or even
-;;      `bug-hunter-hunt' to search in a list of expressions.
-;;
-;;
+;; 
+;;   If your Emacs init file signals an error during startup, but you don’t
+;;   know why, simply issue
+;;   ,----
+;;   | M-x bug-hunter-init-file RET RET
+;;   `----
+;;   and `bug-hunter' will find it for you.
+;; 
+;;   If Emacs starts up without errors but something is not working as it
+;;   should, invoke the same command, but give it in an assertion.
+;;   Essentially, if you can write a snippet that detects the issue and
+;;   returns non-nil, just provide this snippet as the assertion and the
+;;   Bug Hunter will do a bisection search for you.
+;; 
+;;   For example, let’s say there’s something in your init file that’s
+;;   loading the `cl' library, and you don’t want that. You /know/ you’re
+;;   not loading it yourself, but how can you figure out which external
+;;   package is responsible for this outrage?
+;; 
+;;   ,----
+;;   | M-x bug-hunter-init-file RET (featurep 'cl) RET
+;;   `----
+;; 
+;;   *That’s it!* You’ll be given a nice buffer reporting the results:
+;; 
+;;   - Are you getting obscure errors when trying to open /“.tex”/ files?
+;;     Don’t despair! Just use `(find-file "dummy.tex")' as the assertion.
+;;   - Did `ox-html' stop working due to some arcane misconfiguration? Just
+;;     write an assertion that does an export and checks the result.
+;;   - Does some random command suddenly bind itself to `C-j' and you can’t
+;;     figure out why? `(eq (key-binding "\n") 'unwanted-command)' is the
+;;     assertion for you!
+;; 
+;;   Finally, you can also use `bug-hunter-file' to hunt in other files.
+;; 
+
 ;; Installation
 ;; ============
-;;
-;;   It is part of Emacs and is available trough GNU Elpa. To install,
-;;   issue
-;;
-;;   ,----
-;;   | M-x package-install RET bug-hunter
-;;   `----
+;; 
+;;   Bug Hunter will be on Gelpa shortly. For now, do the following:
+;;   1. Open the `bug-hunter.el` file.
+;;   2. Issue `M-x package-install-from-buffer`.
 
 
 ;;; Code:
