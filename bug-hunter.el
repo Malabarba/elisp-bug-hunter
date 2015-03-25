@@ -77,6 +77,9 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defvar bug-hunter-use-timeout t
+  "Whether bug-hunter should limit process execution time.")
+
 (defvar bug-hunter--assertion-reminder
   "Remember, the assertion must be an expression that returns
 non-nil in your current (problematic) Emacs state, AND that
@@ -267,7 +270,7 @@ See `bug-hunter' for a description on the ASSERTION.
 TIMEOUT, if non-nil, specifies how long the process is allowed to
 run in seconds.  If it goes longer than that, the process is
 killed, and the return value is (bug-caught timeout)."
-  (if timeout
+  (if (and timeout bug-hunter-use-timeout)
       (with-timeout (timeout '(bug-caught timeout))
         (bug-hunter--run-and-test-1 forms assertion))
     (bug-hunter--run-and-test-1 forms assertion)))
@@ -440,6 +443,13 @@ All sexps inside `user-init-file' are read and passed to
 assertion."
   (interactive (list (bug-hunter--read-from-minibuffer)))
   (bug-hunter-file user-init-file assertion))
+
+(defun bug-hunter-toggle-timeout ()
+  "Toggle the value of `bug-hunter-use-timeout'."
+  (interactive)
+  (message "Timeout %s."
+    (if (setq bug-hunter-use-timeout (not bug-hunter-use-timeout))
+        "enabled" "disabled")))
 
 (provide 'bug-hunter)
 ;;; bug-hunter.el ends here
