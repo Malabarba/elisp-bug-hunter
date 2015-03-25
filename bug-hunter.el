@@ -192,6 +192,11 @@ the file."
                      " before that.")
            (concat "There's a " char
                    " on this position, and that is not valid elisp syntax."))))
+      (timeout
+       "Trying to load a portion of the file took more 4 times longer
+  than loading the entire file, so we decided to stop. If you'd
+  like to try again regardless of how long it takes, do
+      M-x `bug-hunter-toggle-timeout'")
       (user-aborted
        (let* ((print-level 2)
               (print-length 15)
@@ -281,23 +286,24 @@ killed, and the return value is (bug-caught timeout)."
   "Split list L in two lists of same size."
   (seq-partition l (ceiling (/ (length l) 2.0))))
 
-(defun bug-hunter--bisect (assertion safe head &optional tail)
+(defun bug-hunter--bisect (assertion safe head &optional tail timeout)
   "Implementation used by `bug-hunter--bisect-start'.
 ASSERTION is received by `bug-hunter--bisect-start'.
 SAFE is a list of forms confirmed to not match the ASSERTION,
 HEAD is a list of forms to be tested now, and TAIL is a list
-which will be inspected if HEAD doesn't match ASSERTION."
+which will be inspected if HEAD doesn't match ASSERTION.
+TIMEOUT is passed to `bug-hunter--run-and-test'."
   (cond
    ((not tail)
     (vector (length safe)
             ;; Sometimes we already ran this, sometimes not. So it's
             ;; easier to just run it anyway to get the return value.
-            (bug-hunter--run-and-test (append safe head) assertion)))
+            (bug-hunter--run-and-test (append safe head) assertion timeout)))
    ((and (message "Testing: %s/%s"
            (cl-incf bug-hunter--i)
            bug-hunter--estimate)
          (setq bug-hunter--current-head head)
-         (bug-hunter--run-and-test (append safe head) assertion))
+         (bug-hunter--run-and-test (append safe head) assertion timeout))
     (apply #'bug-hunter--bisect
       assertion
       safe
@@ -307,19 +313,25 @@ which will be inspected if HEAD doesn't match ASSERTION."
         (append safe head)
         (bug-hunter--split tail)))))
 
-(defun bug-hunter--bisect-start (forms assertion)
+(defun bug-hunter--bisect-start (forms assertion &optional timeout)
   "Run a bisection search on list of FORMS using ASSERTION.
 Returns a vector [n value], where n is the position of the first
 element in FORMS which trigger ASSERTION, and value is the
 ASSERTION's return value.
 
 If ASSERTION is nil, n is the position of the first form to
-signal an error and value is (bug-caught . ERROR-SIGNALED)."
+signal an error and value is (bug-caught . ERROR-SIGNALED).
+
+TIMEOUT, if non-nil, is the max number of seconds each step of
+the bisection is allowed to take.  If a step takes longer than
+that, it is as if one of the forms under scrutiny was found to
+signal an error (it doesn't abort the entire bisection)."
   (let ((bug-hunter--i 0)
         (bug-hunter--estimate (ceiling (log (length forms) 2)))
-        (bug-hunter--current-head nil))
+        (bug-hunter--current-head nil)
+        (split (bug-hunter--split forms)))
     (condition-case-unless-debug nil
-        (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))
+        (bug-hunter--bisect assertion nil (car split) (cadr split) timeout)
       (quit `[nil (bug-caught user-aborted ,bug-hunter--current-head)]))))
 
 
@@ -346,15 +358,19 @@ are signaled and the assertion is not triggered after all EXPRs
 are evaluated."
   (pop-to-buffer (bug-hunter--init-report-buffer))
   (let ((expressions (unless (eq (car-safe rich-forms) 'bug-caught)
-                       (mapcar #'car rich-forms))))
+                       (mapcar #'car rich-forms)))
+        (time-0 (time-to-seconds (current-time)))
+        (timeout nil))
     (cond
      ((not expressions)
       (apply #'bug-hunter--report-error (cdr rich-forms))
       (apply #'vector (cdr rich-forms)))
 
      ;; Make sure there's a bug to hunt.
-     ((progn (bug-hunter--report "Doing some initial tests...")
-             (not (bug-hunter--run-and-test expressions assertion)))
+     ((prog2 ;; OMFG! I found a use for `prog2'.
+          (bug-hunter--report "Doing some initial tests...")
+          (not (bug-hunter--run-and-test expressions assertion))
+        (setq timeout (* 4 (- (time-to-seconds (current-time)) time-0))))
       (bug-hunter--report-user-error "Test failed.\n%s\n%s"
         (if assertion
             (concat "The assertion returned nil after loading the entire file.\n"
@@ -376,10 +392,9 @@ is something seriously wrong with your Emacs installation.
 There's nothing more I can do here.")
         (or assertion "")))
 
-     (t
-      ;; Perform the actual hunt.
+     (t ;; Perform the actual hunt.
       (bug-hunter--report "Initial tests done. Hunting for the cause...")
-      (let* ((result (bug-hunter--bisect-start expressions assertion)))
+      (let* ((result (bug-hunter--bisect-start expressions assertion timeout)))
         (if (not result)
             (bug-hunter--report-user-error "No problem was found, despite our initial tests.\n%s"
               "I have no idea what's going on.")
