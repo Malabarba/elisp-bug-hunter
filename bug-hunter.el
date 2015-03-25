@@ -229,8 +229,7 @@ the file."
           (with-temp-file file-name
             (print (list 'prin1 form) (current-buffer)))
           (call-process exec nil out-buf nil
-                        "-Q" "--batch" "-l"
-                        (shell-quote-argument file-name))
+                        "-Q" "--batch" "-l" file-name)
           (with-current-buffer out-buf
             (goto-char (point-max))
             (forward-sexp -1)
