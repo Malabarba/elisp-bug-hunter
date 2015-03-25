@@ -62,13 +62,13 @@
 (require 'cl-lib)
 
 (defvar bug-hunter--current-head nil
-  "Current list of expressions under scrutiny. Used for user feedback.
+  "Current list of expressions under scrutiny.  Used for user feedback.
 Used if the user aborts before bisection ends.")
 
 (defvar bug-hunter--i 0
-  "Current step of the bisection. Used for user feedback.")
+  "Current step of the bisection.  Used for user feedback.")
 (defvar bug-hunter--estimate 0
-  "Estimate on how many steps the bisection can take. Used for user feedback.
+  "Estimate on how many steps the bisection can take.  Used for user feedback.
 This is the base 2 log of the number of expressions in the
 file.")
 
@@ -77,8 +77,7 @@ file.")
 
 (defun bug-hunter--read-buffer ()
   "Return all sexps after point as a list."
-  (let ((out)
-        (line))
+  (let (out line col)
     (or (condition-case er
             ;; Looks hacky, but comes from `byte-compile-from-buffer'.
             (while (progn (while (progn (skip-chars-forward " \t\n\^l")
@@ -105,38 +104,34 @@ file.")
 
 ;;; Reporting functions
 (defun bug-hunter--report-print (&rest r)
+  "Print information on the \"*Bug-Hunter Report*\" buffer.
+R is passed to `format' and inserted."
   (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
     (goto-char (point-max))
     (let ((inhibit-read-only t))
       (insert "\n" (apply #'format r)))))
 
 (defun bug-hunter--report (&rest r)
+  "Report arbitrary information.
+R is passed to `bug-hunter--report-print'."
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
   (apply #'message r))
 
-(defun bug-hunter--report-value (value padding)
-  (declare (indent 1))
-  (bug-hunter--report
-      (with-temp-buffer
-        (pp value (current-buffer))
-        (goto-char (point-min))
-        (let ((pad (make-string padding ?\s)))
-          (while (not (eobp))
-            (insert pad)
-            (forward-line 1)))
-        (buffer-string))))
-
 (defun bug-hunter--report-user-error (&rest r)
+  "Report the user has done something wrong.
+R is passed to `bug-hunter--report-print'."
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
-  (bug-hunter--report-print "")
+  (bug-hunter--report-print "\xc")
   (apply #'user-error r))
 
+(defvar compilation-error-regexp-alist)
 (defun bug-hunter--init-report-buffer ()
+  "Create and prepare the \"*Bug-Hunter Report*\" buffer."
   (or (get-buffer "*Bug-Hunter Report*")
       (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
-        (compilation-mode)
+        (compilation-mode "Bug Hunt")
         (set (make-local-variable 'compilation-error-regexp-alist)
              '(comma))
         (current-buffer))))
@@ -201,7 +196,7 @@ the file."
 
 ;;; Execution functions
 (defun bug-hunter--run-form (form)
-  "Run FUNCTION with \"emacs -Q\" and return the result."
+  "Run FORM with \"emacs -Q\" and return the result."
   (let ((out-buf (generate-new-buffer "*Bug-Hunter Command*"))
         (exec (file-truename (expand-file-name invocation-name
                                                invocation-directory)))
@@ -237,10 +232,15 @@ See `bug-hunter' for a description on the ASSERTION."
 
 ;;; The actual bisection
 (defun bug-hunter--split (l)
+  "Split list L in two lists of same size."
   (seq-partition l (ceiling (/ (length l) 2.0))))
 
 (defun bug-hunter--bisect (assertion safe head &optional tail)
-  "Implementation used by `bug-hunter--bisect-start'."
+  "Implementation used by `bug-hunter--bisect-start'.
+ASSERTION is received by `bug-hunter--bisect-start'.
+SAFE is a list of forms confirmed to not match the ASSERTION,
+HEAD is a list of forms to be tested now, and TAIL is a list
+which will be inspected if HEAD doesn't match ASSERTION."
   (cond
    ((not tail)
     (vector (length safe)
@@ -272,7 +272,7 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
         (bug-hunter--estimate (ceiling (log (length forms) 2)))
         (bug-hunter--current-head nil))
-    (condition-case-unless-debug er
+    (condition-case-unless-debug nil
         (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))
       (quit `[nil (bug-caught user-aborted ,bug-hunter--current-head)]))))
 
@@ -281,7 +281,7 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
 (defun bug-hunter-hunt (rich-forms assertion)
   "Bisect RICH-FORMS using ASSERTION.
 RICH-FORMS is a list with elements of the form: (EXPR LINE COL)
-    EXPR is an elisp expression. LINE and COL are the coordinates
+    EXPR is an elisp expression.  LINE and COL are the coordinates
     in `bug-hunter--current-file' where the expression starts.
 It is expected that one of EXPR is either throwing an error or
 causing some undesirable effect (which triggers ASSERTION).
@@ -290,7 +290,7 @@ ASSERTION is either nil or an expression.
     If nil, EXPRs are bisected until we find the first one that
     throws errors.
     If it is an expression, EXPRs are bisected by testing
-    ASSERTION. It should return nil if all is fine (e.g. if used
+    ASSERTION.  It should return nil if all is fine (e.g. if used
     with \"emacs -Q\"), and should return non-nil when a problem
     is detected.
 
@@ -367,7 +367,7 @@ Wraps them in a progn if necessary."
 
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
-  "Test ASSERTION while bisecting FILE.
+  "Bisect FILE while testing ASSERTION.
 All sexps in FILE are read and passed to `bug-hunter-hunt' as a
 list.  See `bug-hunter-hunt' for how to use assertion."
   (interactive
