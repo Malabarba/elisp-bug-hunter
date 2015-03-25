@@ -208,10 +208,9 @@ file.")
               (print-level nil))
           (with-temp-file file-name
             (print (list 'prin1 form) (current-buffer)))
-          (shell-command (concat (shell-quote-argument exec)
-                                 " -Q --batch -l "
-                                 (shell-quote-argument file-name))
-                         out-buf)
+          (call-process exec nil out-buf nil
+                        "-Q" "--batch" "-l"
+                        (shell-quote-argument file-name))
           (with-current-buffer out-buf
             (goto-char (point-max))
             (forward-sexp -1)
