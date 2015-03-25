@@ -77,6 +77,12 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defvar bug-hunter--assertion-reminder
+  "Remember, the assertion must be an expression that returns
+non-nil in your current (problematic) Emacs state, AND that
+returns nil on a clean Emacs instance."
+  "Printed to the user if they provide a bad assertion.")
+
 (defvar bug-hunter--current-head nil
   "Current list of expressions under scrutiny.  Used for user feedback.
 Used if the user aborts before bisection ends.")
@@ -326,15 +332,24 @@ are evaluated."
      ((progn (bug-hunter--report "Doing some initial tests...")
              (not (bug-hunter--run-and-test expressions assertion)))
       (bug-hunter--report-user-error "Test failed.\n%s\n%s"
-        (if assertion "Assertion returned nil even with all expressions evaluated:"
-          "No errors signaled even with all expressions evaluated.")
+        (if assertion
+            (concat "The assertion returned nil after loading the entire file.\n"
+                    bug-hunter--assertion-reminder)
+          "No errors signaled after loading the entire file. If you're
+looking for something that's not an error, you need to provide an
+assertion. See this link for some examples:
+    https://github.com/Bruce-Connor/elisp-bug-hunter")
         (or assertion "")))
 
      ;; Make sure we're in a forest, not a volcano.
      ((bug-hunter--run-and-test nil assertion)
       (bug-hunter--report-user-error "Test failed.\n%s\n%s"
-        (if assertion "Assertion returned non-nil even on emacs -Q:"
-          "Detected a signaled error even on emacs -Q")
+        (if assertion
+            (concat "Assertion returned non-nil even on emacs -Q:"
+                    bug-hunter--assertion-reminder)
+          "Detected a signaled error even on emacs -Q. I'm sorry, but there
+is something seriously wrong with your Emacs installation.
+There's nothing more I can do here.")
         (or assertion "")))
 
      (t
