@@ -14,14 +14,14 @@
 
 (ert-deftest bug-hunter-test ()
   (should
-   (equal [5 2 (void-variable not-defined) not-defined]
+   (equal [(void-variable not-defined) 5 2 not-defined]
           (bug-hunter-hunt
            '(((setq test 1) 3 0)
              ((setq test 2) 4 1)
              (not-defined 5 2))
            nil)))
   (should
-   (equal [2 11 (assertion-triggered t) (setq test2 2)]
+   (equal [(assertion-triggered t) 2 11 (setq test2 2)]
           (bug-hunter-hunt
            '(((setq test0 0) 0 9)
              ((setq test1 1) 1 10)
@@ -44,7 +44,7 @@
     (dotimes (n size)
       (setcar (elt forms (- size n 1)) 'not-defined)
       (should
-       (equal [12 90 (void-variable not-defined) not-defined]
+       (equal [(void-variable not-defined) 12 90 not-defined]
               (bug-hunter-hunt forms nil)))))
   (let* ((size 8)
          (forms (make-list size '(setq dummy 1))))
@@ -62,17 +62,17 @@
       (insert "(setq useless 1)\n#\n(setq useless 1)\n"))
     (should
      (equal (bug-hunter-file file nil)
-            [2 0 (invalid-read-syntax "#")]))
+            [(invalid-read-syntax "#") 2 0]))
     (should
-     (equal '(bug-caught 2 0 (invalid-read-syntax "#"))
+     (equal '(bug-caught (invalid-read-syntax "#") 2 0)
             (bug-hunter--read-contents file)))
     (with-temp-file file
       (insert "(setq useless 1)\n)\n(setq useless 1)\n"))
     (should
-     (equal '(bug-caught 2 0 (invalid-read-syntax ")"))
+     (equal '(bug-caught (invalid-read-syntax ")") 2 0)
             (bug-hunter--read-contents file)))
     (with-temp-file file
       (insert "(setq useless 1)\n(\n(setq useless 1)\n"))
     (should
-     (equal '(bug-caught 2 0 (end-of-file))
+     (equal '(bug-caught (end-of-file) 2 0)
             (bug-hunter--read-contents file)))))

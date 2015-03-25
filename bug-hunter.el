@@ -213,7 +213,7 @@ the file."
     (bug-hunter--report "  Caused by the following expression:\n%s"
       (bug-hunter--pretty-format expression 4)))
   (bug-hunter--report "\xc")
-  `[,line ,column ,error ,expression])
+  `[,error ,line ,column ,expression])
 
 
 ;;; Execution functions
