@@ -61,6 +61,10 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defvar bug-hunter--current-head nil
+  "Current list of expressions under scrutiny. Used for user feedback.
+Used if the user aborts before bisection ends.")
+
 (defvar bug-hunter--i 0
   "Current step of the bisection. Used for user feedback.")
 (defvar bug-hunter--estimate 0
@@ -149,8 +153,9 @@ file.")
     (buffer-string)))
 
 (defun bug-hunter--report-error (line column error &optional expression)
-  (bug-hunter--report "%S, line %s pos %s:"
-    bug-hunter--current-file line column)
+  (when line
+    (bug-hunter--report "%S, line %s pos %s:"
+      bug-hunter--current-file line column))
   (bug-hunter--report "  %s"
     (cl-case (car error)
       (end-of-file
@@ -164,6 +169,21 @@ file.")
                      " before that.")
            (concat "There's a " char
                    " on this position, and that is not valid elisp syntax."))))
+      (user-aborted
+       (let* ((print-level 2)
+              (print-length 15)
+              (forms (cadr error))
+              (size (length forms)))
+         (concat "User aborted while testing the following expressions:\n"
+                 (mapconcat (lambda (x) (bug-hunter--pretty-format x 4))
+                            (if (< size 16) forms (seq-take forms 7))
+                            "")
+                 (when (> size 16)
+                   (format "\n    ... %s omitted expressions ...\n\n"
+                     (- size 14)))
+                 (when (> size 16)
+                   (mapconcat (lambda (x) (bug-hunter--pretty-format x 4))
+                              (seq-drop forms (- size 7)) "")))))
       (assertion-triggered
        (concat "The assertion returned the following value here:\n"
                (bug-hunter--pretty-format (second error) 4)))
@@ -228,6 +248,7 @@ See `bug-hunter' for a description on the ASSERTION."
    ((and (message "Testing: %s/%s"
            (cl-incf bug-hunter--i)
            bug-hunter--estimate)
+         (setq bug-hunter--current-head head)
          (bug-hunter--run-and-test (append safe head) assertion))
     (apply #'bug-hunter--bisect
       assertion
@@ -247,8 +268,11 @@ ASSERTION's return value.
 If ASSERTION is nil, n is the position of the first form to
 signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
-        (bug-hunter--estimate (ceiling (log (length forms) 2))))
-    (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))))
+        (bug-hunter--estimate (ceiling (log (length forms) 2)))
+        (bug-hunter--current-head nil))
+    (condition-case-unless-debug er
+        (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))
+      (quit `[nil (bug-caught user-aborted ,bug-hunter--current-head)]))))
 
 
 ;;; Main functions
@@ -304,8 +328,8 @@ are evaluated."
               "I have no idea what's going on.")
           (let* ((pos (elt result 0))
                  (ret (elt result 1))
-                 (linecol (cdr (elt rich-forms pos)))
-                 (expression (elt expressions pos)))
+                 (linecol (when pos (cdr (elt rich-forms pos))))
+                 (expression (when pos (elt expressions pos))))
             (if (eq (car-safe ret) 'bug-caught)
                 (bug-hunter--report-error
                  (first linecol) (second linecol) (cdr ret) expression)
