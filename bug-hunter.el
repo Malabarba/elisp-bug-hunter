@@ -90,8 +90,8 @@ file.")
               (push (list (read (current-buffer)) line col)
                     out)
               nil)
-          (end-of-file `(bug-caught ,line ,col (end-of-file)))
-          (invalid-read-syntax `(bug-caught ,line ,col ,er))
+          (end-of-file `(bug-caught (end-of-file) ,line ,col))
+          (invalid-read-syntax `(bug-caught ,er ,line ,col))
           (error (error "Ran into an error we don't understand, please file a bug report: %S" er)))
         (nreverse out))))
 
@@ -152,7 +152,10 @@ file.")
         (forward-line 1)))
     (buffer-string)))
 
-(defun bug-hunter--report-error (line column error &optional expression)
+(defun bug-hunter--report-error (error line column &optional expression)
+  "Print on report buffer information about ERROR.
+LINE and COLUMN are the coordinates where EXPRESSION started in
+the file."
   (when line
     (bug-hunter--report "%S, line %s pos %s:"
       bug-hunter--current-file line column))
@@ -161,7 +164,7 @@ file.")
       (end-of-file
        "There's a missing closing parenthesis, the expression on this line never ends.")
       (invalid-read-syntax
-       (let ((char (second error)))
+       (let ((char (cadr error)))
          (if (member char '("]" ")"))
              (concat "There's an extra " char
                      " on this position. There's probably a missing "
@@ -186,13 +189,13 @@ file.")
                               (seq-drop forms (- size 7)) "")))))
       (assertion-triggered
        (concat "The assertion returned the following value here:\n"
-               (bug-hunter--pretty-format (second error) 4)))
+               (bug-hunter--pretty-format (cadr error) 4)))
       (t (format "The following error was signaled here:\n    %S"
            error))))
   (when expression
     (bug-hunter--report "  Caused by the following expression:\n%s"
       (bug-hunter--pretty-format expression 4)))
-  (bug-hunter--report "")
+  (bug-hunter--report "\xc")
   `[,line ,column ,error ,expression])
 
 
@@ -331,10 +334,10 @@ are evaluated."
                  (expression (when pos (elt expressions pos))))
             (if (eq (car-safe ret) 'bug-caught)
                 (bug-hunter--report-error
-                 (first linecol) (second linecol) (cdr ret) expression)
+                 (cdr ret) (car linecol) (cadr linecol) expression)
               (bug-hunter--report-error
-               (first linecol) (second linecol)
-               (list 'assertion-triggered ret) expression)))))))))
+               (list 'assertion-triggered ret)
+               (car linecol) (cadr linecol) expression)))))))))
 
 (defun bug-hunter--read-from-minibuffer ()
   "Read a list of expressions from the minibuffer.
