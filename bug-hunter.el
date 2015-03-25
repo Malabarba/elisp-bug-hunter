@@ -256,13 +256,14 @@ signal an error and value is (bug-caught . ERROR-SIGNALED)."
   "Bisect RICH-FORMS using ASSERTION.
 RICH-FORMS is a list with elements of the form: (EXPR LINE COL)
     EXPR is an elisp expression. LINE and COL are the coordinates
-    where that expression starts in `bug-hunter--current-file'.
+    in `bug-hunter--current-file' where the expression starts.
 It is expected that one of EXPR is either throwing an error or
 causing some undesirable effect (which triggers ASSERTION).
 
 ASSERTION is either nil or an expression.
-    If nil, FORMS are bisected until they stop throwing errors.
-    If it is an expression, FORMS are bisected by testing
+    If nil, EXPRs are bisected until we find the first one that
+    throws errors.
+    If it is an expression, EXPRs are bisected by testing
     ASSERTION. It should return nil if all is fine (e.g. if used
     with \"emacs -Q\"), and should return non-nil when a problem
     is detected.
