@@ -303,7 +303,7 @@ are evaluated."
      ((not expressions)
       (apply #'bug-hunter--report-error (cdr rich-forms))
       (apply #'vector (cdr rich-forms)))
-     
+
      ;; Make sure there's a bug to hunt.
      ((progn (bug-hunter--report "Doing some initial tests...")
              (not (bug-hunter--run-and-test expressions assertion)))
@@ -311,7 +311,7 @@ are evaluated."
         (if assertion "Assertion returned nil even with all expressions evaluated:"
           "No errors signaled even with all expressions evaluated.")
         (or assertion "")))
-     
+
      ;; Make sure we're in a forest, not a volcano.
      ((bug-hunter--run-and-test nil assertion)
       (bug-hunter--report-user-error "Test failed.\n%s\n%s"
