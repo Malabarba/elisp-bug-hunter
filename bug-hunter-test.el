@@ -76,3 +76,7 @@
     (should
      (equal '(bug-caught (end-of-file) 2 0)
             (bug-hunter--read-contents file)))))
+
+
+(provide 'bug-hunter-test)
+;;; bug-hunter-test.el ends here
