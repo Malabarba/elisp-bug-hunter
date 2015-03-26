@@ -262,25 +262,29 @@ ASSERTION is received by `bug-hunter--bisect-start'.
 SAFE is a list of forms confirmed to not match the ASSERTION,
 HEAD is a list of forms to be tested now, and TAIL is a list
 which will be inspected if HEAD doesn't match ASSERTION."
-  (cond
-   ((not tail)
-    (vector (length safe)
-            ;; Sometimes we already ran this, sometimes not. So it's
-            ;; easier to just run it anyway to get the return value.
-            (bug-hunter--run-and-test (append safe head) assertion)))
-   ((and (message "Testing: %s/%s"
-           (cl-incf bug-hunter--i)
-           bug-hunter--estimate)
-         (setq bug-hunter--current-head head)
-         (bug-hunter--run-and-test (append safe head) assertion))
-    (apply #'bug-hunter--bisect
-      assertion
-      safe
-      (bug-hunter--split head)))
-   (t (apply #'bug-hunter--bisect
+  (message "Testing: %s/%s" (cl-incf bug-hunter--i) bug-hunter--estimate)
+  ;; Used if the user quits.
+  (setq bug-hunter--current-head head)
+  (let ((ret-val (bug-hunter--run-and-test (append safe head) assertion)))
+    (cond
+     ((not tail)
+      (cl-assert ret-val nil)
+      (vector (length safe) ret-val))
+     ;; Issue in the head.
+     ((and ret-val (< (length head) 2))
+      (vector (length safe) ret-val))
+     (ret-val
+      (apply #'bug-hunter--bisect
         assertion
-        (append safe head)
-        (bug-hunter--split tail)))))
+        safe
+        (bug-hunter--split head)))
+     ;; Issue in the tail.
+     (t (apply #'bug-hunter--bisect
+          assertion
+          (append safe head)
+          ;; If tail has length 1, we already know where the issue is,
+          ;; but we still do this to get the return value.
+          (bug-hunter--split tail))))))
 
 (defun bug-hunter--bisect-start (forms assertion)
   "Run a bisection search on list of FORMS using ASSERTION.
