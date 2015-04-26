@@ -1,5 +1,6 @@
 #+OPTIONS: toc:nil num:nil
-#+TITLE: [[file:hunter.png]] The Bug Hunter [[https://travis-ci.org/Malabarba/elisp-bug-hunter?branch%3Dmaster][https://secure.travis-ci.org/Malabarba/elisp-bug-hunter.png?branch=master]]
+#+TITLE: [[file:hunter.png]] The Bug Hunter [[https://travis-ci.org/Malabarba/elisp-bug-hunter][file:https://travis-ci.org/Malabarba/elisp-bug-hunter.svg?branch=master]]
+
 
 The Bug Hunter is an Emacs library that finds the source of an error
 or unexpected behavior inside an elisp configuration file (tipically
