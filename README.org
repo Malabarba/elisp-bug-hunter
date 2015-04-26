@@ -3,7 +3,7 @@
 
 
 The Bug Hunter is an Emacs library that finds the source of an error
-or unexpected behavior inside an elisp configuration file (tipically
+or unexpected behavior inside an elisp configuration file (typically
 ~init.el~ or ~.emacs~).
 
 * Usage Examples
