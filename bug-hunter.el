@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 ;; `bug-hunter' is an Emacs library that finds the source of an error or
-;; unexpected behavior inside an elisp configuration file (tipically
+;; unexpected behavior inside an elisp configuration file (typically
 ;; `init.el' or `.emacs').
 ;; 
 ;; 
@@ -68,7 +68,7 @@
 ;; Installation
 ;; ============
 ;; 
-;;   Bug Hunter will be on Gelpa shortly. For now, do the following:
+;;   Bug Hunter will be on Melpa shortly. For now, do the following:
 ;;   1. Open the `bug-hunter.el` file.
 ;;   2. Issue `M-x package-install-from-buffer`.
 
