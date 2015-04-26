@@ -49,3 +49,27 @@ The Bug Hunter is available from [[https://elpa.gnu.org/packages/bug-hunter.html
 #+BEGIN_SRC text
 M-x package-install RET bug-hunter
 #+END_SRC
+
+* init.org and other literate-style configs
+
+Some people (me included) like to organize their init files by
+writting it in ~org-mode~ instead of Emacs-Lisp. This usually involves
+adding something like this to ~init.el~,
+#+BEGIN_SRC emacs-lisp
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Maybe some code up here ;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(require 'org)
+(org-babel-tangle-file "~/.emacs.d/org-init.org"
+                       "~/.emacs.d/org-init.el")
+(load "~/.emacs.d/org-init.el")
+#+END_SRC
+
+At first, this makes the Bug-Hunter essentially useless, for it will
+do the hunting in ~init.el~ instead of the much more extensive
+~org-init.el~. The name of the second file (~org-init.el~) will vary,
+but the point is the same.
+But fear not! There’s a simple solution:
+
+1. If you have any code above the call to ~org-babel-tangle-file~, copy that to the top of ~org-init.el~ (or whatever is the name of your tangled file). This includes that ~(require 'org)~ over there.
+2. Invoke ~M-x~ ~bug-hunter-file~ (instead of ~bug-hunter-init-file~). It will ask you which file to debug, and you need to point it to your tangled output file ~org-init.el~.
