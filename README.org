@@ -13,7 +13,8 @@ know why, simply issue
 #+BEGIN_SRC text
 M-x bug-hunter-init-file RET RET
 #+END_SRC
-and The Bug Hunter will find it for you.
+and The Bug Hunter will find it for you.  Note that your ~init.el~
+(or ~.emacs~) must be idempotent for this to work.
 
 If Emacs starts up without errors but something is not working as it
 should, invoke the same command, but give it in an assertion.
