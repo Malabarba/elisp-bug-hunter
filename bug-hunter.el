@@ -383,9 +383,6 @@ Wraps them in a progn if necessary."
            (let ((minibuffer-completing-symbol t))
              (minibuffer-with-setup-hook
                  (lambda ()
-                   ;; FIXME: call emacs-lisp-mode?
-                   (add-function :before-until (local 'eldoc-documentation-function)
-                                 #'elisp-eldoc-documentation-function)
                    (add-hook 'completion-at-point-functions
                              #'elisp-completion-at-point nil t)
                    (run-hooks 'eval-expression-minibuffer-setup-hook))
