@@ -72,7 +72,7 @@
 (require 'seq)
 (require 'cl-lib)
 
-(defvar bug-hunter--assertion-reminder
+(defconst bug-hunter--assertion-reminder
   "Remember, the assertion must be an expression that returns
 non-nil in your current (problematic) Emacs state, AND that
 returns nil on a clean Emacs instance."
@@ -290,7 +290,6 @@ ASSERTION's return value.
 If ASSERTION is nil, n is the position of the first form to
 signal an error and value is (bug-caught . ERROR-SIGNALED)."
   (let ((bug-hunter--i 0)
-        (bug-hunter--estimate (ceiling (log (length forms) 2)))
         (bug-hunter--current-head nil))
     (condition-case-unless-debug nil
         (apply #'bug-hunter--bisect assertion nil (bug-hunter--split forms))
@@ -320,7 +319,8 @@ are signaled and the assertion is not triggered after all EXPRs
 are evaluated."
   (pop-to-buffer (bug-hunter--init-report-buffer))
   (let ((expressions (unless (eq (car-safe rich-forms) 'bug-caught)
-                       (mapcar #'car rich-forms))))
+                       (mapcar #'car rich-forms)))
+        (bug-hunter--estimate (ceiling (log (length rich-forms) 2))))
     (cond
      ((not expressions)
       (apply #'bug-hunter--report-error (cdr rich-forms))
@@ -395,7 +395,7 @@ Wraps them in a progn if necessary."
 (defun bug-hunter-file (file &optional assertion)
   "Bisect FILE while testing ASSERTION.
 All sexps in FILE are read and passed to `bug-hunter-hunt' as a
-list.  See `bug-hunter-hunt' for how to use assertion."
+list.  See `bug-hunter-hunt' for how to use ASSERTION."
   (interactive
    (list
     (read-file-name "File to bisect: "
@@ -411,7 +411,7 @@ list.  See `bug-hunter-hunt' for how to use assertion."
   "Test ASSERTION throughout `user-init-file'.
 All sexps inside `user-init-file' are read and passed to
 `bug-hunter-hunt' as a list.  See `bug-hunter-hunt' for how to use
-assertion."
+ASSERTION."
   (interactive (list (bug-hunter--read-from-minibuffer)))
   (bug-hunter-file user-init-file assertion))
 
