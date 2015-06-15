@@ -38,6 +38,12 @@
   (should-error
    (bug-hunter-hunt nil 'not-defined)))
 
+(ert-deftest bug-hunter-test-interactive ()
+  (cl-letf (((symbol-function #'y-or-n-p) #'ignore))
+    (should-error (bug-hunter-hunt
+                   '(((kill-emacs) 0 1))
+                   'interactive))))
+
 (ert-deftest bug-hunter-looong-hunt ()
   (let* ((size 30)
          (forms (make-list size '((setq dummy 1) 12 90))))
