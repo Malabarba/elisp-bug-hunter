@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
 ;; URL: http://github.com/Malabarba/elisp-bug-hunter
-;; Version: 0.1
+;; Version: 0.5
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
@@ -165,6 +165,7 @@ R is passed to `format' and inserted."
 R is passed to `bug-hunter--report-print'."
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
+  (redisplay)
   (apply #'message r))
 
 (defun bug-hunter--report-user-error (&rest r)
@@ -172,7 +173,7 @@ R is passed to `bug-hunter--report-print'."
 R is passed to `bug-hunter--report-print'."
   (declare (indent 1))
   (apply #'bug-hunter--report-print r)
-  (bug-hunter--report-print "\xc")
+  (bug-hunter--report-print "\xc\n")
   (apply #'user-error r))
 
 (defvar compilation-error-regexp-alist)
@@ -243,7 +244,7 @@ the file."
   (when expression
     (bug-hunter--report "  Caused by the following expression:\n%s"
       (bug-hunter--pretty-format expression 4)))
-  (bug-hunter--report "\xc")
+  (bug-hunter--report "\xc\n")
   `[,error ,line ,column ,expression])
 
 
@@ -390,7 +391,7 @@ are evaluated."
                        (mapcar #'car rich-forms)))
         (bug-hunter--estimate (ceiling (log (length rich-forms) 2))))
     ;; Prepare buffer, and make sure they've seen it.
-    (pop-to-buffer (bug-hunter--init-report-buffer assertion bug-hunter--estimate))
+    (switch-to-buffer (bug-hunter--init-report-buffer assertion bug-hunter--estimate))
     (when (eq assertion 'interactive)
       (read-char-choice "Please the instructions above and type 6 when ready. " '(?6)))
 
