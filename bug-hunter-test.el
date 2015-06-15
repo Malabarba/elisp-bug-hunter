@@ -39,7 +39,8 @@
    (bug-hunter-hunt nil 'not-defined)))
 
 (ert-deftest bug-hunter-test-interactive ()
-  (cl-letf (((symbol-function #'y-or-n-p) #'ignore))
+  (cl-letf (((symbol-function #'y-or-n-p) #'ignore)
+            ((symbol-function #'read-char-choice) #'ignore))
     (should-error (bug-hunter-hunt
                    '(((kill-emacs) 0 1))
                    'interactive))))
