@@ -212,37 +212,65 @@ the file."
 
 
 ;;; Execution functions
-(defun bug-hunter--run-form (form)
-  "Run FORM with \"emacs -Q\" and return the result."
+(defun bug-hunter--print-to-temp (sexp)
+  "Print SEXP to a temp file and return the file name."
+  (let ((print-length nil)
+        (print-level nil)
+        (file (make-temp-file "bug-hunter")))
+    (with-temp-file file
+      (print sexp (current-buffer)))
+    file))
+
+(defun bug-hunter--run-emacs (file &rest args)
+  "Start an Emacs process to run FILE and return the output buffer.
+ARGS are passed before \"-l FILE\"."
   (let ((out-buf (generate-new-buffer "*Bug-Hunter Command*"))
         (exec (file-truename (expand-file-name invocation-name
-                                               invocation-directory)))
-        (file-name (make-temp-file "bug-hunter")))
+                                               invocation-directory))))
+    (apply #'call-process exec nil out-buf nil
+           (append args (list "-l" file)))
+    out-buf))
+
+(defun bug-hunter--run-form (form)
+  "Run FORM with \"emacs -Q\" and return the result."
+  (let ((file-name (bug-hunter--print-to-temp (list 'prin1 form))))
     (unwind-protect
-        (let ((print-length nil)
-              (print-level nil))
-          (with-temp-file file-name
-            (print (list 'prin1 form) (current-buffer)))
-          (call-process exec nil out-buf nil
-                        "-Q" "--batch" "-l" file-name)
-          (with-current-buffer out-buf
-            (goto-char (point-max))
-            (forward-sexp -1)
-            (prog1 (read (current-buffer))
-              (kill-buffer (current-buffer)))))
+        (with-current-buffer (bug-hunter--run-emacs file-name "-Q" "--batch")
+          (goto-char (point-max))
+          (forward-sexp -1)
+          (prog1 (read (current-buffer))
+            (kill-buffer (current-buffer))))
       (delete-file file-name))))
+
+(defun bug-hunter--run-form-interactively (form)
+  "Run FORM in a graphical frame and ask user about the outcome."
+  (let ((file-name (bug-hunter--print-to-temp (list 'prin1 form))))
+    (unwind-protect
+        (bug-hunter--run-emacs file-name)
+      (delete-file file-name))
+    (y-or-n-p "Did you find the problem/bug in this instance? ")))
 
 (defun bug-hunter--run-and-test (forms assertion)
   "Execute FORMS in the background and test ASSERTION.
-See `bug-hunter' for a description on the ASSERTION."
-  (bug-hunter--run-form
-   `(condition-case er
-        (let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
-          (delete-file server-name)
-          ,@forms
-          (run-hooks 'after-init-hook)
-          ,assertion)
-      (error (cons 'bug-caught er)))))
+See `bug-hunter' for a description on the ASSERTION.
+
+If ASSERTION is 'interactive, the form is run through
+`bug-hunter--run-form-interactively'.  Otherwise, a slightly
+modified version of the form combined with ASSERTION is run
+through `bug-hunter--run-form'."
+  (if (eq assertion 'interactive)
+      (bug-hunter--run-form-interactively `(progn ,@forms))
+    (bug-hunter--run-form
+     `(condition-case er
+          (let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
+            (delete-file server-name)
+            (if site-run-file (load site-run-file t t))
+            (run-hooks 'before-init-hook)
+            ,@forms
+            (package-initialize)
+            (run-hooks 'after-init-hook)
+            ,assertion)
+        (error (cons 'bug-caught er))))))
 
 
 
