@@ -72,6 +72,14 @@
 (require 'seq)
 (require 'cl-lib)
 
+(defconst bug-hunter--interactive-explanation
+  "You have asked to do an interactive hunt, here's how it goes.
+1) I will start a new Emacs frame.
+2) You will try to reproduce your problem on the new frame.
+3) When you’re done, close that frame.
+4) I will ask you if you managed to reproduce the problem.
+5) We will repeat steps up to %s times, so hang tight!")
+
 (defconst bug-hunter--assertion-reminder
   "Remember, the assertion must be an expression that returns
 non-nil in your current (problematic) Emacs state, AND that
@@ -144,14 +152,17 @@ R is passed to `bug-hunter--report-print'."
   (apply #'user-error r))
 
 (defvar compilation-error-regexp-alist)
-(defun bug-hunter--init-report-buffer ()
-  "Create and prepare the \"*Bug-Hunter Report*\" buffer."
-  (or (get-buffer "*Bug-Hunter Report*")
-      (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
-        (compilation-mode "Bug Hunt")
-        (set (make-local-variable 'compilation-error-regexp-alist)
-             '(comma))
-        (current-buffer))))
+(defun bug-hunter--init-report-buffer (assertion steps)
+  "Create and prepare the \"*Bug-Hunter Report*\" buffer.
+Also add some descriptions depending on ASSERTION."
+  (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
+    (erase-buffer)
+    (compilation-mode "Bug Hunt")
+    (set (make-local-variable 'compilation-error-regexp-alist)
+         '(comma))
+    (pcase assertion
+      (`interactive (insert (format bug-hunter--interactive-explanation (+ 2 steps)))))
+    (current-buffer)))
 
 (defun bug-hunter--pretty-format (value padding)
   "Return a VALUE as a string with PADDING spaces on the left."
@@ -345,11 +356,16 @@ Bug hunter will refuse to hunt if (i) an error is signaled or the
 assertion is triggered while running emacs -Q, or (ii) no errors
 are signaled and the assertion is not triggered after all EXPRs
 are evaluated."
-  (pop-to-buffer (bug-hunter--init-report-buffer))
   (let ((expressions (unless (eq (car-safe rich-forms) 'bug-caught)
                        (mapcar #'car rich-forms)))
         (bug-hunter--estimate (ceiling (log (length rich-forms) 2))))
+    ;; Prepare buffer, and make sure they've seen it.
+    (pop-to-buffer (bug-hunter--init-report-buffer assertion bug-hunter--estimate))
+    (when (eq assertion 'interactive)
+      (read-char-choice "Please the instructions above and type 6 when ready. " '(?6)))
+
     (cond
+     ;; Check for errors when reading the init file.
      ((not expressions)
       (apply #'bug-hunter--report-error (cdr rich-forms))
       (apply #'vector (cdr rich-forms)))
@@ -398,26 +414,36 @@ There's nothing more I can do here.")
 
 (defun bug-hunter--read-from-minibuffer ()
   "Read a list of expressions from the minibuffer.
-Wraps them in a progn if necessary."
-  (require 'simple)
-  (let ((exprs
-         (with-temp-buffer
-           ;; Copied from `read--expression'.
-           (let ((minibuffer-completing-symbol t))
-             (minibuffer-with-setup-hook
-                 (lambda ()
-                   (add-hook 'completion-at-point-functions
-                             #'elisp-completion-at-point nil t)
-                   (run-hooks 'eval-expression-minibuffer-setup-hook))
-               (insert
-                (read-from-minibuffer
-                 "Expression that returns nil if all is well (optional): "
-                 nil read-expression-map nil 'read-expression-history))))
-           (goto-char (point-min))
-           (mapcar #'car (bug-hunter--read-buffer)))))
-    (if (cdr exprs)
-        (cons #'progn exprs)
-      (car exprs))))
+Wraps them in a progn if necessary to always return a single
+form.
+
+The user may decide to not provide input, in which case
+'interactive is returned.  Note, this is different from the user
+typing `RET' at an empty prompt, in which case nil is returned."
+  (if (eq (read-char-choice
+           "Would you like to bisect interactively (i) or provide a lisp assertion (a)? (type i or a) "
+           '(?i ?l))
+          ?i)
+      'interactive
+    (require 'simple)
+    (let ((exprs
+           (with-temp-buffer
+             ;; Copied from `read--expression'.
+             (let ((minibuffer-completing-symbol t))
+               (minibuffer-with-setup-hook
+                   (lambda ()
+                     (add-hook 'completion-at-point-functions
+                               #'elisp-completion-at-point nil t)
+                     (run-hooks 'eval-expression-minibuffer-setup-hook))
+                 (insert
+                  (read-from-minibuffer
+                   "Expression that returns nil if all is well (optional): "
+                   nil read-expression-map nil 'read-expression-history))))
+             (goto-char (point-min))
+             (mapcar #'car (bug-hunter--read-buffer)))))
+      (if (cdr exprs)
+          (cons #'progn exprs)
+        (car exprs)))))
 
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
