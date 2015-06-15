@@ -22,27 +22,46 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;;
-;; The Bug Hunter is an Emacs library that finds the source of an error or
-;; unexpected behavior inside an elisp configuration file (typically
-;; `init.el' or `.emacs').
+;; An Emacs library that finds the source of an error or unexpected
+;; behavior inside an elisp configuration file (typically `init.el' or
+;; `.emacs').
 ;;
 ;; Usage Examples
 ;; ==============
 ;;
+;; Automated error hunting
+;; ~~~~~~~~~~~~~~~~~~~~~~~
+;;
 ;;   If your Emacs init file signals an error during startup, but you don’t
 ;;   know why, simply issue
 ;;   ,----
-;;   | M-x bug-hunter-init-file RET RET
+;;   | M-x bug-hunter-init-file RET e
 ;;   `----
 ;;   and The Bug Hunter will find it for you. Note that your `init.el' (or
 ;;   `.emacs') must be idempotent for this to work.
 ;;
+;;
+;; Interactive hunt
+;; ~~~~~~~~~~~~~~~~
+;;
 ;;   If Emacs starts up without errors but something is not working as it
-;;   should, invoke the same command, but give it in an assertion.
-;;   Essentially, if you can write a snippet that detects the issue and
-;;   returns non-nil, just provide this snippet as the assertion and the
-;;   Bug Hunter will do a bisection search for you.
+;;   should, invoke the same command, but choose the interactive option:
+;;   ,----
+;;   | M-x bug-hunter-init-file RET i
+;;   `----
+;;   The Bug Hunter will start a separate Emacs frame several times, and
+;;   then it will ask you each time whether that frame presented the
+;;   problem you have. After doing this about 5--12 times, you’ll be given
+;;   the results.
+;;
+;;
+;; Assertion hunt
+;; ~~~~~~~~~~~~~~
+;;
+;;   The Bug Hunter can also find your issue based on an assertion.
+;;   Essentially, if you can write a code snippet that returns non-nil when
+;;   it detects the issue, just provide this snippet as the assertion and
+;;   the Bug Hunter will do the rest.
 ;;
 ;;   For example, let’s say there’s something in your init file that’s
 ;;   loading the `cl' library, and you don’t want that. You /know/ you’re
@@ -50,12 +69,12 @@
 ;;   package is responsible for this outrage?
 ;;
 ;;   ,----
-;;   | M-x bug-hunter-init-file RET (featurep 'cl) RET
+;;   | M-x bug-hunter-init-file RET a (featurep 'cl) RET
 ;;   `----
 ;;
 ;;   *That’s it!* You’ll be given a nice buffer reporting the results:
 ;;
-;;   - Are you getting obscure errors when trying to open /“.tex”/ files?
+;;   - Are you getting obscure errors when trying to open /".tex"/ files?
 ;;     - Don’t despair! Just use `(find-file "dummy.tex")' as the
 ;;       assertion.
 ;;   - Did `ox-html' stop working due to some arcane misconfiguration?
@@ -66,7 +85,12 @@
 ;;       you!
 ;;
 ;;   Finally, you can also use `bug-hunter-file' to hunt in other files.
-
+;;
+;;
+;; init.org and other literate-style configs
+;; =========================================
+;;
+;; Please see the full Readme on http://github.com/Malabarba/elisp-bug-hunter
 
 ;;; Code:
 (require 'seq)
@@ -418,6 +442,12 @@ There's nothing more I can do here.")
                (list 'assertion-triggered ret)
                (car linecol) (cadr linecol) expression)))))))))
 
+(defconst bug-hunter--hunt-type-prompt
+  "To bisect interactively, type i
+To use automatic error detection, type e
+To provide a lisp assertion, type a
+=> ")
+
 (defun bug-hunter--read-from-minibuffer ()
   "Read a list of expressions from the minibuffer.
 Wraps them in a progn if necessary to always return a single
@@ -426,30 +456,29 @@ form.
 The user may decide to not provide input, in which case
 'interactive is returned.  Note, this is different from the user
 typing `RET' at an empty prompt, in which case nil is returned."
-  (if (eq (read-char-choice
-           "Would you like to bisect interactively (i) or provide a lisp assertion (a)? (type i or a) "
-           '(?i ?l))
-          ?i)
-      'interactive
-    (require 'simple)
-    (let ((exprs
-           (with-temp-buffer
-             ;; Copied from `read--expression'.
-             (let ((minibuffer-completing-symbol t))
-               (minibuffer-with-setup-hook
-                   (lambda ()
-                     (add-hook 'completion-at-point-functions
-                               #'elisp-completion-at-point nil t)
-                     (run-hooks 'eval-expression-minibuffer-setup-hook))
-                 (insert
-                  (read-from-minibuffer
-                   "Expression that returns nil if all is well (optional): "
-                   nil read-expression-map nil 'read-expression-history))))
-             (goto-char (point-min))
-             (mapcar #'car (bug-hunter--read-buffer)))))
-      (if (cdr exprs)
-          (cons #'progn exprs)
-        (car exprs)))))
+  (pcase (read-char-choice bug-hunter--hunt-type-prompt '(?i ?e ?a))
+    (`?i 'interactive)
+    (`?e nil)
+    (_
+     (require 'simple)
+     (let ((exprs
+            (with-temp-buffer
+              ;; Copied from `read--expression'.
+              (let ((minibuffer-completing-symbol t))
+                (minibuffer-with-setup-hook
+                    (lambda ()
+                      (add-hook 'completion-at-point-functions
+                                #'elisp-completion-at-point nil t)
+                      (run-hooks 'eval-expression-minibuffer-setup-hook))
+                  (insert
+                   (read-from-minibuffer
+                    "Provide an assertion.  This is a lisp expression that returns nil if (and only if) everything is fine:\n => "
+                    nil read-expression-map nil 'read-expression-history))))
+              (goto-char (point-min))
+              (mapcar #'car (bug-hunter--read-buffer)))))
+       (if (cdr exprs)
+           (cons #'progn exprs)
+         (car exprs))))))
 
 ;;;###autoload
 (defun bug-hunter-file (file &optional assertion)
