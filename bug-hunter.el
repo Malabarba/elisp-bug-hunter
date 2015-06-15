@@ -156,12 +156,13 @@ R is passed to `bug-hunter--report-print'."
   "Create and prepare the \"*Bug-Hunter Report*\" buffer.
 Also add some descriptions depending on ASSERTION."
   (with-current-buffer (get-buffer-create "*Bug-Hunter Report*")
-    (erase-buffer)
-    (compilation-mode "Bug Hunt")
-    (set (make-local-variable 'compilation-error-regexp-alist)
-         '(comma))
-    (pcase assertion
-      (`interactive (insert (format bug-hunter--interactive-explanation (+ 2 steps)))))
+    (let ((inhibit-read-only t))
+      (erase-buffer)
+      (compilation-mode "Bug Hunt")
+      (set (make-local-variable 'compilation-error-regexp-alist)
+           '(comma))
+      (pcase assertion
+        (`interactive (insert (format bug-hunter--interactive-explanation (+ 2 steps))))))
     (current-buffer)))
 
 (defun bug-hunter--pretty-format (value padding)
