@@ -258,9 +258,19 @@ ARGS are passed before \"-l FILE\"."
   "Run FORM in a graphical frame and ask user about the outcome."
   (let ((file-name (bug-hunter--print-to-temp (list 'prin1 form))))
     (unwind-protect
-        (bug-hunter--run-emacs file-name)
+        (bug-hunter--run-emacs file-name "-Q")
       (delete-file file-name))
     (y-or-n-p "Did you find the problem/bug in this instance? ")))
+
+(defun bug-hunter--wrap-forms-for-eval (forms)
+  "Return FORMS wrapped in initialization code."
+  `(let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
+     (delete-file server-name)
+     (if site-run-file (load site-run-file t t))
+     (run-hooks 'before-init-hook)
+     ,@forms
+     (package-initialize)
+     (run-hooks 'after-init-hook)))
 
 (defun bug-hunter--run-and-test (forms assertion)
   "Execute FORMS in the background and test ASSERTION.
@@ -271,17 +281,12 @@ If ASSERTION is 'interactive, the form is run through
 modified version of the form combined with ASSERTION is run
 through `bug-hunter--run-form'."
   (if (eq assertion 'interactive)
-      (bug-hunter--run-form-interactively `(progn ,@forms))
+      (bug-hunter--run-form-interactively
+       (bug-hunter--wrap-forms-for-eval forms))
     (bug-hunter--run-form
      `(condition-case er
-          (let ((server-name (make-temp-file "bug-hunter-temp-server-file")))
-            (delete-file server-name)
-            (if site-run-file (load site-run-file t t))
-            (run-hooks 'before-init-hook)
-            ,@forms
-            (package-initialize)
-            (run-hooks 'after-init-hook)
-            ,assertion)
+          ,(append (bug-hunter--wrap-forms-for-eval forms)
+                   (list assertion))
         (error (cons 'bug-caught er))))))
 
 
