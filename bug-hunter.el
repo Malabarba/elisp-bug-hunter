@@ -393,7 +393,7 @@ are evaluated."
     ;; Prepare buffer, and make sure they've seen it.
     (switch-to-buffer (bug-hunter--init-report-buffer assertion bug-hunter--estimate))
     (when (eq assertion 'interactive)
-      (read-char-choice "Please the instructions above and type 6 when ready. " '(?6)))
+      (read-char-choice "Please read the instructions above and type 6 when ready. " '(?6)))
 
     (cond
      ;; Check for errors when reading the init file.
