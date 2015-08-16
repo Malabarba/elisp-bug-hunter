@@ -26,8 +26,8 @@ should, invoke the same command, but choose the interactive option:
 #+BEGIN_SRC text
 M-x bug-hunter-init-file RET i
 #+END_SRC
-The Bug Hunter will start a separate Emacs frame several times, and
-then it will ask you each time whether that frame presented the
+The Bug Hunter will start a separate Emacs instance several times, and
+then it will ask you each time whether that instance presented the
 problem you have. After doing this about 5--12 times, you’ll be given
 the results.
 

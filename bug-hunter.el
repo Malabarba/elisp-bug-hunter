@@ -49,8 +49,8 @@
 ;;   ,----
 ;;   | M-x bug-hunter-init-file RET i
 ;;   `----
-;;   The Bug Hunter will start a separate Emacs frame several times, and
-;;   then it will ask you each time whether that frame presented the
+;;   The Bug Hunter will start a separate Emacs instance several times, and
+;;   then it will ask you each time whether that instance presented the
 ;;   problem you have. After doing this about 5--12 times, you’ll be given
 ;;   the results.
 ;;
@@ -98,7 +98,7 @@
 
 (defconst bug-hunter--interactive-explanation
   "You have asked to do an interactive hunt, here's how it goes.
-1) I will start a new Emacs frame.
+1) I will start a new Emacs instance, which opens a new frame.
 2) You will try to reproduce your problem on the new frame.
 3) When you’re done, close that frame.
 4) I will ask you if you managed to reproduce the problem.
@@ -280,7 +280,7 @@ ARGS are passed before \"-l FILE\"."
       (delete-file file-name))))
 
 (defun bug-hunter--run-form-interactively (form)
-  "Run FORM in a graphical frame and ask user about the outcome."
+  "Run FORM in a graphical instance and ask user about the outcome."
   (let ((file-name (bug-hunter--print-to-temp (list 'prin1 form))))
     (unwind-protect
         (bug-hunter--run-emacs file-name "-Q")
