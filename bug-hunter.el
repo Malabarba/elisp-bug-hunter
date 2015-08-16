@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
 ;; URL: http://github.com/Malabarba/elisp-bug-hunter
-;; Version: 0.5
+;; Version: 1.0
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
@@ -107,7 +107,10 @@
 (defconst bug-hunter--assertion-reminder
   "Remember, the assertion must be an expression that returns
 non-nil in your current (problematic) Emacs state, AND that
-returns nil on a clean Emacs instance."
+returns nil on a clean Emacs instance.
+If you're unsure how to write an assertion, you can try the interactive
+hunt instead, or see some examples in the Readme:
+    https://github.com/Bruce-Connor/elisp-bug-hunter"
   "Printed to the user if they provide a bad assertion.")
 
 (defvar bug-hunter--current-head nil
@@ -408,9 +411,11 @@ are evaluated."
         (if assertion
             (concat "The assertion returned nil after loading the entire file.\n"
                     bug-hunter--assertion-reminder)
-          "No errors signaled after loading the entire file. If you're
-looking for something that's not an error, you need to provide an
-assertion. See this link for some examples:
+          "No errors signaled after loading the entire file.
+If you're looking for something that's not an error, use the
+interactive hunt instead of the error hunt.  If you have some
+elisp proficiency, you can also use the assertion hunt, see this
+link for some examples:
     https://github.com/Bruce-Connor/elisp-bug-hunter")
         (or assertion "")))
 
