@@ -3,7 +3,7 @@
 ;; Copyright (C) 2015 Free Software Foundation, Inc.
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
-;; URL: http://github.com/Malabarba/elisp-bug-hunter
+;; URL: https://github.com/Malabarba/elisp-bug-hunter
 ;; Version: 1.0
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
