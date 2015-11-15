@@ -1,6 +1,7 @@
 #+OPTIONS: toc:nil num:nil
 #+TITLE: [[file:hunter.png]] The Bug Hunter [[https://travis-ci.org/Malabarba/elisp-bug-hunter][file:https://travis-ci.org/Malabarba/elisp-bug-hunter.svg?branch=master]]
 
+/Automatically debug and bisect your init (.emacs) file!/
 
 The Bug Hunter is an Emacs library that finds the source of an error
 or unexpected behavior inside an elisp configuration file (typically

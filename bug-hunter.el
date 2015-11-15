@@ -1,4 +1,4 @@
-;;; bug-hunter.el --- Hunt down errors in elisp files  -*- lexical-binding: t; -*-
+;;; bug-hunter.el --- Hunt down errors by bisecting elisp files  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2015 Free Software Foundation, Inc.
 
