@@ -288,7 +288,7 @@ ARGS are passed before \"-l FILE\"."
     (unwind-protect
         (bug-hunter--run-emacs file-name "-Q")
       (delete-file file-name))
-    (y-or-n-p "Did you find the problem/bug in this instance? ")))
+    (y-or-n-p "Did you find the problem/bug in this instance (if you encounter some other issue, answer `n')? ")))
 
 (defun bug-hunter--wrap-forms-for-eval (forms)
   "Return FORMS wrapped in initialization code."
