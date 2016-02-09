@@ -143,7 +143,10 @@ file.")
               nil)
           (end-of-file `(bug-caught (end-of-file) ,line ,col))
           (invalid-read-syntax `(bug-caught ,er ,line ,col))
-          (error (error "Ran into an error we don't understand, please file a bug report: %S" er)))
+          (error
+           (if (string= (elt er 1) "Invalid modifier in string")
+               `(bug-caught (invalid-modifier) ,line ,col)
+             (error "Ran into an error we don't understand, please file a bug report: %S" er))))
         (nreverse out))))
 
 (defun bug-hunter--read-contents (file)
@@ -215,6 +218,9 @@ the file."
     (cl-case (car error)
       (end-of-file
        "There's a missing closing parenthesis, the expression on this line never ends.")
+      (invalid-modifier (concat "There's a string on this line with an invalid modifier."
+                                "\n  A \"modifier\" is a \\ followed by a few characters."
+                                "\n  For example, \\C-; is an invalid modifier."))
       (invalid-read-syntax
        (let ((char (cadr error)))
          (if (member char '("]" ")"))
