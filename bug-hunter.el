@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
 ;; URL: https://github.com/Malabarba/elisp-bug-hunter
-;; Version: 1.1
+;; Version: 1.2
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
@@ -468,8 +468,15 @@ form.
 The user may decide to not provide input, in which case
 'interactive is returned.  Note, this is different from the user
 typing `RET' at an empty prompt, in which case nil is returned."
-  (pcase (read-char-choice bug-hunter--hunt-type-prompt '(?i ?e ?a))
-    (`?i 'interactive)
+  (pcase (read-char-choice (if (display-graphic-p)
+                               bug-hunter--hunt-type-prompt
+                             (replace-regexp-in-string "To bisect interactively,.*\n" ""
+                                                       bug-hunter--hunt-type-prompt))
+                           '(?i ?e ?a))
+    (`?i
+     (unless (display-graphic-p)
+       (user-error "Sorry, but `interactive' bisection needs a graphical frame"))
+     'interactive)
     (`?e nil)
     (_
      (require 'simple)
