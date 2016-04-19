@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
 ;; URL: https://github.com/Malabarba/elisp-bug-hunter
-;; Version: 1.2
+;; Version: 1.3
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
@@ -431,9 +431,11 @@ link for some examples:
         (if assertion
             (concat "Assertion returned non-nil even on emacs -Q:"
                     bug-hunter--assertion-reminder)
-          "Detected a signaled error even on emacs -Q. I'm sorry, but there
-is something seriously wrong with your Emacs installation.
-There's nothing more I can do here.")
+          "Detected a signaled error even on emacs -Q. This could mean three
+things things:
+1. The problem happens inside `package-initialize'.
+2. You wrote the assertion wrong.
+3. There's something seriously wrong with your Emacs installation.")
         (or assertion "")))
 
      (t
