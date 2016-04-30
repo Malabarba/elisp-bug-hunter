@@ -4,7 +4,7 @@
 
 ;; Author: Artur Malabarba <emacs@endlessparentheses.com>
 ;; URL: https://github.com/Malabarba/elisp-bug-hunter
-;; Version: 1.3
+;; Version: 1.3.1
 ;; Keywords: lisp
 ;; Package-Requires: ((seq "1.3") (cl-lib "0.5"))
 
@@ -75,7 +75,7 @@
 ;;   *That’s it!* You’ll be given a nice buffer reporting the results:
 ;;
 ;;   - Are you getting obscure errors when trying to open /".tex"/ files?
-;;     - Don’t despair! Just use `(find-file "dummy.tex")' as the
+;;     - Don’t despair! Just use `(and (find-file "dummy.tex") nil)' as the
 ;;       assertion.
 ;;   - Did `ox-html' stop working due to some arcane misconfiguration?
 ;;     - Just write an assertion that does an export and checks the result.

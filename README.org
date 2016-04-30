@@ -52,7 +52,7 @@ M-x bug-hunter-init-file RET a (featurep 'cl) RET
 
 [[file:cl-example.png]]
 - Are you getting obscure errors when trying to open /“.tex”/ files?
-  - Don’t despair! Just use ~(find-file "dummy.tex")~ as the assertion.
+  - Don’t despair! Just use ~(and (find-file "dummy.tex") nil)~ as the assertion.
 - Did ~ox-html~ stop working due to some arcane misconfiguration?
   - Just write an assertion that does an export and checks the result.
 - Does some random command suddenly bind itself to ~C-j~ and you can’t figure out why?
