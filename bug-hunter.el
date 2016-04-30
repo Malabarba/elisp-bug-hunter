@@ -489,7 +489,11 @@ typing `RET' at an empty prompt, in which case nil is returned."
                 (minibuffer-with-setup-hook
                     (lambda ()
                       (add-hook 'completion-at-point-functions
-                                #'elisp-completion-at-point nil t)
+                                (if (fboundp 'elisp-completion-at-point)
+                                    #'elisp-completion-at-point
+                                  (with-no-warnings
+                                    #'lisp-completion-at-point))
+                                nil t)
                       (run-hooks 'eval-expression-minibuffer-setup-hook))
                   (insert
                    (read-from-minibuffer
