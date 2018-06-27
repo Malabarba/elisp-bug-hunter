@@ -17,11 +17,9 @@ know why, simply issue
 #+BEGIN_SRC text
 M-x bug-hunter-init-file RET e
 #+END_SRC
-and The Bug Hunter will find it for you.  Note that your ~init.el~
-(or ~.emacs~) must be idempotent for this to work.
+and The Bug Hunter will find it for you.
 
 ** Interactive hunt
-
 If Emacs starts up without errors but something is not working as it
 should, invoke the same command, but choose the interactive option:
 #+BEGIN_SRC text
