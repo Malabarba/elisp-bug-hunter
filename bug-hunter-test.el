@@ -84,6 +84,21 @@
      (equal '(bug-caught (end-of-file) 2 0)
             (bug-hunter--read-contents file)))))
 
+(ert-deftest bug-hunter-test-header ()
+	(let* ((bug-hunter-header '(setq another-variable 1))
+				 (temp (bug-hunter--print-to-temp '(setq useless 1))))
+		(with-temp-buffer
+			(insert-file-contents temp)
+			(delete-file temp)
+			(should (re-search-forward "another-variable" nil t)))))
+
+(ert-deftest bug-hunter-test-footer ()
+	(let* ((bug-hunter-footer '(setq another-variable 1))
+				 (temp (bug-hunter--print-to-temp '(setq useless 1))))
+		(with-temp-buffer
+			(insert-file-contents temp)
+			(delete-file temp)
+			(should (re-search-forward "another-variable" nil t)))))
 
 (provide 'bug-hunter-test)
 ;;; bug-hunter-test.el ends here

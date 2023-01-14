@@ -258,13 +258,18 @@ the file."
 
 
 ;;; Execution functions
+(defvar bug-hunter-header nil "Emacs Lisp sexp to add at the beginning of the file.")
+(defvar bug-hunter-footer nil "Emacs Lisp sexp to add at the end of the file.")
+
 (defun bug-hunter--print-to-temp (sexp)
   "Print SEXP to a temp file and return the file name."
   (let ((print-length nil)
         (print-level nil)
         (file (make-temp-file "bug-hunter")))
     (with-temp-file file
-      (print sexp (current-buffer)))
+      (when bug-hunter-header (print bug-hunter-header (current-buffer)))
+      (print sexp (current-buffer))
+      (when bug-hunter-footer (print bug-hunter-footer (current-buffer))))
     file))
 
 (defun bug-hunter--run-emacs (file &rest args)

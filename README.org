@@ -88,3 +88,18 @@ but the point is the same. But fear not! There’s a simple solution:
 
 1. If you have any code above the call to ~org-babel-tangle-file~, copy that to the top of ~org-init.el~ (or whatever is the name of your tangled file). This includes that ~(require 'org)~ over there.
 2. Invoke ~M-x~ ~bug-hunter-file~ (instead of ~bug-hunter-init-file~). It will ask you which file to debug, and you need to point it to your tangled output file ~org-init.el~.
+   
+* Specifying additional code
+
+If you need to specify additional code to be run before or after the
+code that you are bisecting, set ~bug-hunter-header~ or
+~bug-hunter-footer~ to a single s-expression. Use ~progn~ to combine
+multiple expressions if needed. For example:
+
+#+begin_src emacs-lisp :eval no
+(setq bug-hunter-header
+			'(progn
+				 (package-initialize)
+				 (use-package quelpa)
+				 (use-package quelpa-use-package)))
+#+end_src
