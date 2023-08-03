@@ -69,14 +69,14 @@
       (insert "(setq useless 1)\n#\n(setq useless 1)\n"))
     (should
      (equal (bug-hunter-file file nil)
-            [(invalid-read-syntax "#") 2 0]))
+            [(invalid-read-syntax "#" 3 0) 2 0]))
     (should
-     (equal '(bug-caught (invalid-read-syntax "#") 2 0)
+     (equal '(bug-caught (invalid-read-syntax "#" 3 0) 2 0)
             (bug-hunter--read-contents file)))
     (with-temp-file file
       (insert "(setq useless 1)\n)\n(setq useless 1)\n"))
     (should
-     (equal '(bug-caught (invalid-read-syntax ")") 2 0)
+     (equal '(bug-caught (invalid-read-syntax ")" 2 1) 2 0)
             (bug-hunter--read-contents file)))
     (with-temp-file file
       (insert "(setq useless 1)\n(\n(setq useless 1)\n"))
